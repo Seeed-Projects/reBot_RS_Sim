@@ -30,11 +30,21 @@ document.body.innerHTML = `
     <div class="dual-view-switch" role="group" aria-label="相机视角">
       <button id="dual-perspective" aria-pressed="true">桌面</button><button id="dual-close" aria-pressed="false">协作特写</button><button id="dual-room" aria-pressed="false">房间全景</button><button id="dual-overhead" aria-pressed="false">俯视</button>
     </div>
-    <aside class="dual-monitor">
+    <aside class="dual-cameras" aria-label="相机实时画面">
+    <section class="dual-monitor dual-overhead-monitor" aria-label="桌面相机画面">
       <div class="dual-monitor-title"><span>桌面相机</span><span>RGB · TOP</span></div>
       <canvas id="overhead-camera-canvas" width="320" height="240" aria-label="桌面俯视相机"></canvas>
       <div class="dual-arm-state"><span><i class="dual-left-dot"></i> <span id="dual-left-role">左臂 · 持杯</span></span><strong id="dual-left-state">待命</strong></div>
       <div class="dual-arm-state"><span><i class="dual-right-dot"></i> <span id="dual-right-role">右臂 · 送勺</span></span><strong id="dual-right-state">待命</strong></div>
+    </section>
+    <section class="dual-monitor" aria-label="左腕相机画面">
+      <div class="dual-monitor-title"><span><i class="dual-left-dot"></i> 左腕相机</span><span>RGB · L</span></div>
+      <canvas id="left-wrist-camera-canvas" width="320" height="240" aria-label="左机械臂腕部摄像头实时画面"></canvas>
+    </section>
+    <section class="dual-monitor" aria-label="右腕相机画面">
+      <div class="dual-monitor-title"><span><i class="dual-right-dot"></i> 右腕相机</span><span>RGB · R</span></div>
+      <canvas id="right-wrist-camera-canvas" width="320" height="240" aria-label="右机械臂腕部摄像头实时画面"></canvas>
+    </section>
     </aside>
     <section class="dual-dock" aria-label="整理任务控制">
       <div class="dual-task-header"><span class="dual-task-kicker" id="dual-task-title">双臂协作</span><span id="dual-count">准备就绪</span><span id="dual-timer">00:00</span><button id="dual-dock-toggle" aria-expanded="true" aria-controls="dual-task-details" aria-label="收起任务卡片" title="收起任务卡片"><span>收起</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
@@ -201,6 +211,8 @@ async function main() {
   view = createSceneView($('dual-viewport'), MODEL_VARIANTS.dual.view);
   view.build(mujoco, model, materialProps);
   view.setOverheadCameraEnabled(true);
+  view.setWristCameraEnabled(true, 'left');
+  view.setWristCameraEnabled(true, 'right');
   simulation = createDualSimulation(mujoco, model, data);
   simulation.step(300);
   $('dual-reset').disabled = false;

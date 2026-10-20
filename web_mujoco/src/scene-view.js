@@ -407,13 +407,18 @@ export function createSceneView(host, options = {}) {
   camera.up.set(0, 0, 1);
   camera.position.set(...(options.position || [0.85, -0.95, 0.62]));
   camera.layers.enable(MAIN_VIEW_HELPER_LAYER);
-  const overheadCamera = new THREE.PerspectiveCamera(48, 4 / 3, 0.02, 4);
-  overheadCamera.matrixAutoUpdate = false;
-  const wristCamera = new THREE.PerspectiveCamera(62.82, 4 / 3, 0.02, 4);
-  wristCamera.matrixAutoUpdate = false;
   const previewDocument = host.ownerDocument;
-  const overheadCanvas = previewDocument.getElementById('overhead-camera-canvas');
-  const wristCanvas = previewDocument.getElementById('wrist-camera-canvas');
+  const cameraPreviews = [
+    ['overhead', 'overhead_rgb', 'overhead-camera-canvas', 48],
+    ['wrist', 'wrist_rgb', 'wrist-camera-canvas', 62.82],
+    ['left-wrist', 'left_wrist_rgb', 'left-wrist-camera-canvas', 62.82],
+    ['right-wrist', 'right_wrist_rgb', 'right-wrist-camera-canvas', 62.82]
+  ].map(([key, name, canvasId, fov]) => {
+    const previewCamera = new THREE.PerspectiveCamera(fov, 4 / 3, 0.02, 4);
+    previewCamera.matrixAutoUpdate = false;
+    return { key, name, camera: previewCamera, canvas: previewDocument.getElementById(canvasId),
+      renderer: null, cameraId: -1, enabled: false };
+  });
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -431,14 +436,10 @@ export function createSceneView(host, options = {}) {
 
   const ndc = new THREE.Vector3();
   const CAMERA_PREVIEW_INTERVAL_MS = 100;
-  const overheadRenderer = overheadCanvas
-    ? new THREE.WebGLRenderer({ canvas: overheadCanvas, antialias: true, powerPreference: 'low-power' })
-    : null;
-  const wristRenderer = wristCanvas
-    ? new THREE.WebGLRenderer({ canvas: wristCanvas, antialias: true, powerPreference: 'low-power' })
-    : null;
-  [overheadRenderer, wristRenderer].forEach((previewRenderer) => {
-    if (!previewRenderer) return;
+  cameraPreviews.forEach((preview) => {
+    if (!preview.canvas) return;
+    const previewRenderer = new THREE.WebGLRenderer({ canvas: preview.canvas, antialias: true, powerPreference: 'low-power' });
+    preview.renderer = previewRenderer;
     previewRenderer.setPixelRatio(1);
     previewRenderer.setSize(320, 240, false);
     previewRenderer.shadowMap.enabled = false;
@@ -749,10 +750,6 @@ export function createSceneView(host, options = {}) {
   let selectionListener = null;
   let pickStart = null;
   let lastCameraPreviewAt = -Infinity;
-  let overheadCameraId = -1;
-  let wristCameraId = -1;
-  let overheadCameraEnabled = false;
-  let wristCameraEnabled = false;
   let cameraModelVisible = true;
   let objectInteraction = {
     enabled: false,
@@ -909,20 +906,13 @@ export function createSceneView(host, options = {}) {
       ...explodableMeshes.map((mesh) => mesh.userData.explosionStage + 1)
     );
     const cameraType = mujoco.mjtObj.mjOBJ_CAMERA?.value;
-    overheadCameraId = cameraType == null
-      ? -1
-      : mujoco.mj_name2id(model, cameraType, 'overhead_rgb');
-    wristCameraId = cameraType == null
-      ? -1
-      : mujoco.mj_name2id(model, cameraType, 'wrist_rgb');
-    for (const [previewCamera, cameraId] of [
-      [overheadCamera, overheadCameraId],
-      [wristCamera, wristCameraId]
-    ]) {
+    for (const preview of cameraPreviews) {
+      const cameraId = cameraType == null ? -1 : mujoco.mj_name2id(model, cameraType, preview.name);
+      preview.cameraId = cameraId;
       const modelFov = Number(model.cam_fovy?.[cameraId]);
       if (cameraId >= 0 && Number.isFinite(modelFov) && modelFov > 0) {
-        previewCamera.fov = modelFov;
-        previewCamera.updateProjectionMatrix();
+        preview.camera.fov = modelFov;
+        preview.camera.updateProjectionMatrix();
       }
     }
   }
@@ -1083,8 +1073,9 @@ export function createSceneView(host, options = {}) {
       selectionHelper.updateMatrixWorld(true);
     }
     if (data.cam_xpos && data.cam_xmat) {
-      if (overheadCameraId >= 0) setPose(overheadCamera, data.cam_xpos, data.cam_xmat, overheadCameraId);
-      if (wristCameraId >= 0) setPose(wristCamera, data.cam_xpos, data.cam_xmat, wristCameraId);
+      for (const preview of cameraPreviews) {
+        if (preview.cameraId >= 0) setPose(preview.camera, data.cam_xpos, data.cam_xmat, preview.cameraId);
+      }
     }
     notifyTimeline();
   }
@@ -1107,13 +1098,9 @@ export function createSceneView(host, options = {}) {
     });
     controls.update();
     renderer.render(scene, camera);
-    if (now - lastCameraPreviewAt >= CAMERA_PREVIEW_INTERVAL_MS &&
-        (overheadCameraEnabled || wristCameraEnabled)) {
-      if (overheadCameraEnabled && overheadRenderer) {
-        overheadRenderer.render(scene, overheadCamera);
-      }
-      if (wristCameraEnabled && wristRenderer) {
-        wristRenderer.render(scene, wristCamera);
+    if (now - lastCameraPreviewAt >= CAMERA_PREVIEW_INTERVAL_MS) {
+      for (const preview of cameraPreviews) {
+        if (preview.enabled && preview.canvas.getClientRects().length) preview.renderer.render(scene, preview.camera);
       }
       lastCameraPreviewAt = now;
     }
@@ -1262,17 +1249,18 @@ export function createSceneView(host, options = {}) {
     navigationPath.material.color.setHex(colors[state] || colors.selected);
   }
 
-  function setOverheadCameraEnabled(enabled) {
-    overheadCameraEnabled = Boolean(enabled && overheadCameraId >= 0 && overheadRenderer);
-    if (overheadCameraEnabled) lastCameraPreviewAt = -Infinity;
-    return overheadCameraEnabled;
+  function setCameraPreviewEnabled(key, enabled) {
+    const preview = cameraPreviews.find(item => item.key === key);
+    if (!preview) return false;
+    preview.enabled = Boolean(enabled && preview.cameraId >= 0 && preview.renderer);
+    if (preview.enabled) lastCameraPreviewAt = -Infinity;
+    return preview.enabled;
   }
 
-  function setWristCameraEnabled(enabled) {
-    wristCameraEnabled = Boolean(enabled && wristCameraId >= 0 && wristRenderer);
-    if (wristCameraEnabled) lastCameraPreviewAt = -Infinity;
-    return wristCameraEnabled;
-  }
+  const wristPreviewKey = side => side ? `${side}-wrist` : 'wrist';
+  const findPreview = key => cameraPreviews.find(item => item.key === key);
+  const setOverheadCameraEnabled = enabled => setCameraPreviewEnabled('overhead', enabled);
+  const setWristCameraEnabled = (enabled, side) => setCameraPreviewEnabled(wristPreviewKey(side), enabled);
 
   function timelineState() {
     const state = evaluateExplosionTimeline(timelineProgress, explosionStageCount);
@@ -1703,17 +1691,17 @@ export function createSceneView(host, options = {}) {
     setOrbitEnabled,
     setOverheadCameraEnabled,
     isOverheadCameraEnabled() {
-      return overheadCameraEnabled;
+      return findPreview('overhead').enabled;
     },
     hasOverheadCamera() {
-      return overheadCameraId >= 0;
+      return findPreview('overhead').cameraId >= 0;
     },
     setWristCameraEnabled,
-    isWristCameraEnabled() {
-      return wristCameraEnabled;
+    isWristCameraEnabled(side) {
+      return findPreview(wristPreviewKey(side))?.enabled || false;
     },
-    hasWristCamera() {
-      return wristCameraId >= 0;
+    hasWristCamera(side) {
+      return (findPreview(wristPreviewKey(side))?.cameraId ?? -1) >= 0;
     },
     setCameraModelVisible,
     isCameraModelVisible() {
@@ -1772,8 +1760,7 @@ export function createSceneView(host, options = {}) {
       navigationGoalCheck.material.dispose();
       navigationPathGeometry.dispose();
       navigationPath.material.dispose();
-      overheadRenderer?.dispose();
-      wristRenderer?.dispose();
+      cameraPreviews.forEach(preview => preview.renderer?.dispose());
       if (gridTexture) { gridTexture.dispose(); gridTexture = null; }
       backdropTexture.dispose();
       homeWood?.dispose();
