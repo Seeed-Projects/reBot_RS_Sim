@@ -95,16 +95,19 @@ export function createGraspDemo({
   physics,
   ik,
   workspaceOffset = { x: 0, y: 0 },
+  visionTargets = VISION_TARGETS,
+  storageZones = STORAGE_ZONES,
   getObserverPosition,
   onChange
 }) {
   const bodyType = mujoco.mjtObj.mjOBJ_BODY.value;
+  const prefix = joints.prefix || '';
   const tableBodyId = mujoco.mj_name2id(model, bodyType, 'task_table');
   const fingerBodies = new Set([
-    mujoco.mj_name2id(model, bodyType, 'gripper_left'),
-    mujoco.mj_name2id(model, bodyType, 'gripper_right')
+    mujoco.mj_name2id(model, bodyType, `${prefix}gripper_left`),
+    mujoco.mj_name2id(model, bodyType, `${prefix}gripper_right`)
   ]);
-  const targets = VISION_TARGETS.map((target) => {
+  const targets = visionTargets.map((target) => {
     const bodyId = mujoco.mj_name2id(model, bodyType, target.body);
     const jointAddress = model.body_jntadr[bodyId];
     return {
@@ -286,7 +289,7 @@ export function createGraspDemo({
     setSelected(next);
     running = true;
     stackQueue = [];
-    begin(next, workspacePoint(STORAGE_ZONES[next]));
+    begin(next, workspacePoint(storageZones[next]));
     return true;
   }
 
@@ -349,31 +352,40 @@ export function createGraspDemo({
 
   function objectHasSupportContact() {
     const selectedBodyId = selected().bodyId;
-    const count = Math.min(data.ncon, data.contact.size());
-    for (let index = 0; index < count; index += 1) {
-      const contact = data.contact.get(index);
-      if (!contact) continue;
-      const body1 = model.geom_bodyid[contact.geom1];
-      const body2 = model.geom_bodyid[contact.geom2];
-      if (
-        (body1 === selectedBodyId && body2 === expectedSupportBodyId) ||
-        (body2 === selectedBodyId && body1 === expectedSupportBodyId)
-      ) return true;
-    }
+    // Embind returns an owned vector copy; release it and each contact handle.
+    const contacts = data.contact;
+    try {
+      const count = Math.min(data.ncon, contacts.size());
+      for (let index = 0; index < count; index += 1) {
+        const contact = contacts.get(index);
+        if (!contact) continue;
+        try {
+          const body1 = model.geom_bodyid[contact.geom1];
+          const body2 = model.geom_bodyid[contact.geom2];
+          if ((body1 === selectedBodyId && body2 === expectedSupportBodyId) ||
+            (body2 === selectedBodyId && body1 === expectedSupportBodyId)) return true;
+        } finally { contact.delete(); }
+      }
+    } finally { contacts.delete(); }
     return false;
   }
 
   function objectHasGripContact() {
     const selectedBodyId = selected().bodyId;
-    const count = Math.min(data.ncon, data.contact.size());
-    for (let index = 0; index < count; index += 1) {
-      const contact = data.contact.get(index);
-      if (!contact) continue;
-      const body1 = model.geom_bodyid[contact.geom1];
-      const body2 = model.geom_bodyid[contact.geom2];
-      const touchesSelected = body1 === selectedBodyId || body2 === selectedBodyId;
-      if (touchesSelected && (fingerBodies.has(body1) || fingerBodies.has(body2))) return true;
-    }
+    const contacts = data.contact;
+    try {
+      const count = Math.min(data.ncon, contacts.size());
+      for (let index = 0; index < count; index += 1) {
+        const contact = contacts.get(index);
+        if (!contact) continue;
+        try {
+          const body1 = model.geom_bodyid[contact.geom1];
+          const body2 = model.geom_bodyid[contact.geom2];
+          const touchesSelected = body1 === selectedBodyId || body2 === selectedBodyId;
+          if (touchesSelected && (fingerBodies.has(body1) || fingerBodies.has(body2))) return true;
+        } finally { contact.delete(); }
+      }
+    } finally { contacts.delete(); }
     return false;
   }
 

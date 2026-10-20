@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createLabProp, disposeLabProp } from './lab-props-view.js';
+import { createHomeProp, createHomeEnvironmentTexture, createWoodTexture } from './home-props-view.js';
 import { createCampusGroundGeometry } from './campus-ground.js';
 import { resolveExplosionLayout } from './explosion-layout.js';
 import {
@@ -387,10 +388,14 @@ function createEnvironmentTexture() {
 export function createSceneView(host, options = {}) {
   const scene = new THREE.Scene();
   const campus = options.environment === 'campus';
+  const home = options.environment === 'home';
+  const homeWood = home ? createWoodTexture() : null;
+  const homeFloor = home ? createWoodTexture(true) : null;
   let campusEnvironment = null;
   const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   const backdropTexture = createBackdropTexture();
   scene.background = backdropTexture;
+  if (home) scene.background = new THREE.Color(0xe6e3d9);
   if (campus) {
     scene.background = new THREE.Color(0xc6d9dc);
     scene.fog = new THREE.Fog(0xc6d9dc, 45, 100);
@@ -473,7 +478,7 @@ export function createSceneView(host, options = {}) {
   }
 
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const environmentSource = createEnvironmentTexture();
+  const environmentSource = home ? createHomeEnvironmentTexture() : createEnvironmentTexture();
   const environmentTexture = pmrem.fromEquirectangular(environmentSource).texture;
   scene.environment = environmentTexture;
   environmentSource.dispose();
@@ -529,6 +534,20 @@ export function createSceneView(host, options = {}) {
     key.position.set(9, -12, 20);
     Object.assign(key.shadow.camera, { far: 70, left: -20, right: 20, top: 18, bottom: -18 });
     key.shadow.camera.updateProjectionMatrix();
+  }
+  if (home) {
+    for (const light of [cyanRim, blueRim, side, rim]) light.intensity = 0;
+    scene.children.find((object) => object.isAmbientLight)?.color.set(0xfff2d9);
+    hemisphere.color.set(0xfff6e8);
+    hemisphere.groundColor.set(0x8d8068);
+    hemisphere.intensity = 1.5;
+    softbox.position.set(.3, -1, 2.5);
+    softbox.color.set(0xffefd7);
+    softbox.lookAt(.3, 0, .74);
+    key.color.set(0xffefd9);
+    key.intensity = 2.1;
+    key.position.set(-.3, -1.8, 3);
+    key.shadow.normalBias = .001;
   }
 
   const tcpMarker = new THREE.Mesh(
@@ -772,7 +791,8 @@ export function createSceneView(host, options = {}) {
       if (campus && namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i).startsWith('campus-building-')) continue;
       const type = model.geom_type[i];
       const size = model.geom_size.subarray(i * 3, i * 3 + 3);
-      const labProp = createLabProp(
+      const geomName = namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i);
+      const labProp = (home && createHomeProp(geomName)) || createLabProp(
         namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i),
         size
       );
@@ -798,10 +818,10 @@ export function createSceneView(host, options = {}) {
       if (!geometry) continue;
       let material;
       if (type === types.plane) {
-        if (!campus && !gridTexture) gridTexture = createGridTexture();
+        if (!campus && !home && !gridTexture) gridTexture = createGridTexture();
         material = new THREE.MeshStandardMaterial({
-          map: campus ? null : gridTexture,
-          color: campus ? 0xffffff : 0x41658f,
+          map: home ? homeFloor : campus ? null : gridTexture,
+          color: home || campus ? 0xffffff : 0x41658f,
           vertexColors: campus,
           metalness: 0.1,
           roughness: 0.82,
@@ -809,6 +829,11 @@ export function createSceneView(host, options = {}) {
         });
       } else {
         material = geomMaterial(model, i, materialProps);
+        if (home && /^(tabletop|leg_|table_apron)/.test(geomName)) {
+          material.map = homeWood;
+          material.color.set(0xffffff);
+          material.roughness = .85;
+        }
       }
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = type !== types.plane;
@@ -1667,6 +1692,14 @@ export function createSceneView(host, options = {}) {
     setNavigationGoalMarker,
     setNavigationPath,
     setCameraMode,
+    setViewPreset(position, target) {
+      controls.enableDamping = false;
+      controls.update();
+      camera.position.set(...position);
+      controls.target.set(...target);
+      controls.update();
+      controls.enableDamping = true;
+    },
     setOrbitEnabled,
     setOverheadCameraEnabled,
     isOverheadCameraEnabled() {
@@ -1743,6 +1776,8 @@ export function createSceneView(host, options = {}) {
       wristRenderer?.dispose();
       if (gridTexture) { gridTexture.dispose(); gridTexture = null; }
       backdropTexture.dispose();
+      homeWood?.dispose();
+      homeFloor?.dispose();
       environmentTexture.dispose();
       controls.dispose();
       renderer.dispose();

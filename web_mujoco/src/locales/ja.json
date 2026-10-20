@@ -11,6 +11,7 @@
   "variant.label": "製品構成",
   "variant.aria": "製品構成を選択",
  "variant.arm": "ロボットアーム標準仕様",
+ "variant.dual": "双腕 · テーブルトップ",
   "variant.agv": "AGV シャーシ仕様",
   "agv.title": "AGV 運転",
   "agv.driveSpeed": "走行速度",

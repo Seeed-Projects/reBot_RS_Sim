@@ -37,10 +37,15 @@ Open the URL printed in the terminal, usually [http://127.0.0.1:5173](http://127
 | Configuration | Entry point | Scene |
 | --- | --- | --- |
 | Standard arm (default) | `/?variant=arm` | `rs_grasp_scene.xml`, including the workbench and graspable objects |
+| Dual-arm home tabletop | `/?variant=dual` | `rs_dual_tabletop_scene.xml`, with two reBots, a wooden table, a tray, a basket and four sortable objects |
 | AGV base | `/?variant=agv` | `rs_agv_scene.xml`, including the mobile base and laboratory |
 | AGV campus streets | `/?variant=agv-campus` | `rs_agv_campus_scene.xml`, with three apartment buildings, a junction and service bays |
 
 Switch configurations at the top of the page. In AGV mode, drive with WASD / arrow keys, stop with Space, select a floor navigation target, or use “Go to grasp area.” Run grasping tasks after docking. The first load downloads the scene meshes.
+
+The dual-arm tabletop runs preset sorting tasks with MuJoCo contact physics: the left arm places an egg and a spool in the tray while the right arm places an apple and a lime in the basket. Select all objects or a single item, pause/resume, reset, adjust speed, and switch camera views. Natural-language control is not connected; the dedicated tabletop UI currently uses Chinese.
+
+The default cup-and-spoon collaboration has the left arm hold the cup while the right arm grips the spoon handle, inserts the bowl and releases it, before the left arm sets the cup down. This preset uses pose IK and releasable assisted grasp constraints; sorting retains contact-based grasping. The room includes cabinets, shelves, curtains, chairs and kitchen accessories, with detailed hollow cup/handle and spoon geometry. The task card can collapse while preserving status and progress, and cameras include a room view and a collaboration close-up.
 
 Campus mode adds charging / delivery navigation shortcuts and a follow camera. These bays demonstrate navigation and docking; charging state and delivery jobs are not simulated. The detailed campus is rendered in the browser; native MuJoCo uses simplified building proxies, and ROS / Nav2 campus maps are not configured.
 

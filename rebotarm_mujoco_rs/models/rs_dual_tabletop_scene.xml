@@ -1,0 +1,465 @@
+<mujoco model="rebot_dual_tabletop">
+  <compiler angle="radian" meshdir="meshes/" />
+  <option timestep="0.001" iterations="80" solver="Newton" integrator="Euler" />
+  <statistic center="0.25 0 0.9" extent="1.6" />
+  <asset>
+    <mesh name="base_link" file="base_link.STL" />
+    <mesh name="link1" file="link1.STL" />
+    <mesh name="motor_2_3" file="motor_2_3.STL" />
+    <mesh name="cnc2" file="cnc2.STL" />
+    <mesh name="pla2_black" file="pla2_black.STL" />
+    <mesh name="pla2_green" file="pla2_green.STL" />
+    <mesh name="link2" file="link2.STL" />
+    <mesh name="cnc3" file="cnc3.STL" />
+    <mesh name="motor_4" file="motor_4.STL" />
+    <mesh name="pla3_black" file="pla3_black_without_seeed_badge.STL" />
+    <mesh name="pla3_seeed_wordmark" file="pla3_seeed_badge_with_counters.STL" />
+    <mesh name="pla3_seeed_wordmark_backing" file="pla3_seeed_wordmark_backing.STL" />
+    <mesh name="pla3_green" file="pla3_green.STL" />
+    <mesh name="link3" file="link3.STL" />
+    <mesh name="motor_5" file="motor_5.STL" />
+    <mesh name="cnc4" file="cnc4.STL" />
+    <mesh name="link4" file="link4.STL" />
+    <mesh name="motor_6" file="motor_6.STL" />
+    <mesh name="cnc5" file="cnc5.STL" />
+    <mesh name="pla5_green" file="pla5_green.STL" />
+    <mesh name="link5" file="link5.STL" />
+    <mesh name="link6" file="link6.STL" />
+    <mesh name="pla7_green" file="pla7_green.STL" />
+    <mesh name="cnc7" file="cnc7.STL" />
+    <mesh name="motor_7" file="motor_7.STL" />
+    <mesh name="gripper_end" file="gripper_end.STL" />
+    <mesh name="pla_left" file="pla_left.STL" />
+    <mesh name="cnc_left" file="cnc_left.STL" />
+    <mesh name="pla_right" file="pla_right.STL" />
+    <mesh name="cnc_right" file="cnc_right.STL" />
+    <mesh name="d405_wrist_mount" file="rebot_b601_rs_d405_mount_30deg.stl" scale="0.001 0.001 0.001" />
+    <mesh name="gripper_left_front_collision" file="right_finger_front.stl" />
+    <mesh name="gripper_left_mid_collision" file="right_finger_mid.stl" />
+    <mesh name="gripper_left_rear_collision" file="right_finger_rear.stl" />
+    <mesh name="gripper_left_carriage_collision" file="colored_right_finger_carriage_grey.stl" />
+    <mesh name="gripper_left_stop_collision" file="colored_right_finger_travel_stop_yellow.stl" />
+    <mesh name="gripper_right_front_collision" file="left_finger_front.stl" />
+    <mesh name="gripper_right_mid_collision" file="left_finger_mid.stl" />
+    <mesh name="gripper_right_rear_collision" file="left_finger_rear.stl" />
+    <mesh name="gripper_right_carriage_collision" file="colored_left_finger_carriage_grey.stl" />
+    <mesh name="gripper_right_stop_collision" file="colored_left_finger_travel_stop_yellow.stl" />
+    <material name="rs_base_black_mat" rgba="0.055 0.065 0.060 1" specular="0.50" shininess="0.72" metallic="0.82" roughness="0.20" />
+    <material name="rs_motor_black_mat" rgba="0.045 0.052 0.049 1" specular="0.42" shininess="0.48" metallic="0.48" roughness="0.48" />
+    <material name="rs_pla_black_mat" rgba="0.090 0.106 0.102 1" specular="0.22" shininess="0.24" metallic="0.08" roughness="0.58" />
+    <material name="rs_wordmark_black_mat" rgba="0.010 0.012 0.011 1" specular="0.04" shininess="0.04" metallic="0.00" roughness="0.76" />
+    <material name="rs_anodized_silver_mat" rgba="0.720 0.760 0.730 1" specular="0.72" shininess="0.90" metallic="0.88" roughness="0.18" />
+    <material name="rs_seeed_green_mat" rgba="0.725 0.835 0.118 1" specular="0.22" shininess="0.26" metallic="0.18" roughness="0.34" />
+    <material name="d405_mount_mat" rgba="1.000 0.320 0.020 1" specular="0.20" shininess="0.22" metallic="0.04" roughness="0.64" />
+    <material name="d405_housing_mat" rgba="0.160 0.205 0.225 1" specular="0.42" shininess="0.48" metallic="0.22" roughness="0.38" />
+    <material name="d405_front_mat" rgba="0.025 0.038 0.046 1" specular="0.32" shininess="0.44" metallic="0.12" roughness="0.34" />
+    <material name="d405_lens_mat" rgba="0.020 0.420 0.700 1" specular="0.90" shininess="0.96" metallic="0.10" roughness="0.08" />
+    <material name="oak" rgba=".64 .43 .25 1" roughness=".85" />
+    <material name="oak_light" rgba=".78 .60 .39 1" roughness=".85" />
+    <material name="ivory" rgba=".91 .89 .82 1" roughness=".85" />
+    <material name="wall" rgba=".54 .66 .68 1" roughness=".85" />
+    <material name="trim" rgba=".91 .91 .85 1" roughness=".85" />
+    <material name="floor_mat" rgba=".62 .49 .36 1" roughness=".85" />
+    <material name="rug" rgba=".77 .73 .61 1" roughness=".85" />
+    <material name="stripe" rgba=".72 .37 .19 1" roughness=".85" />
+    <material name="basket" rgba=".53 .37 .20 1" roughness=".85" />
+    <material name="leaf" rgba=".17 .32 .13 1" roughness=".85" />
+    <material name="terracotta" rgba=".59 .29 .16 1" roughness=".85" />
+    <material name="apple" rgba=".72 .045 .035 1" roughness=".85" />
+    <material name="lime" rgba=".40 .64 .055 1" roughness=".85" />
+    <material name="egg" rgba=".91 .79 .58 1" roughness=".85" />
+    <material name="spool" rgba=".12 .31 .47 1" roughness=".85" />
+    <material name="soil" rgba=".12 .08 .045 1" roughness=".85" />
+    <material name="art" rgba=".31 .45 .40 1" roughness=".85" />
+    <material name="ceramic" rgba=".74 .85 .79 1" roughness=".85" />
+    <material name="steel" rgba=".66 .69 .68 1" roughness=".85" />
+  </asset>
+  <worldbody>
+    <body name="left_base_link" pos="0 -0.34 0.90">
+      <inertial pos="0.0000029 -0.0001223 0.0243376" mass="1.1774" fullinertia="0.0013304 0.00213119 0.00275877 0.00000001 0 0" />
+      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_base_black_mat" type="mesh" mesh="base_link" />
+      <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="base_link" />
+      <body name="left_link1" pos="-0.0003428 -0.0009868 0.075">
+        <joint name="left_joint1" type="hinge" axis="0 0 -1" limited="true" range="-2.8 2.8" damping="0.5" frictionloss="0" />
+        <inertial pos="0.0081765 0.0012258 0.033142" mass="0.4655" fullinertia="0.00025207 0.00015464 0.00023416 0 -0.00002832 0" />
+        <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="link1" />
+        <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link1" />
+        <body name="left_link2" pos="0.020343 0.027237 0.07" quat="0.7071055 -0.7071081 0 0">
+          <joint name="left_joint2" type="hinge" axis="0 0 1" limited="true" range="-0.2 3.14" damping="0.5" frictionloss="0" />
+          <inertial pos="-0.1178648 -0.0034223 -0.0271552" mass="1.772" fullinertia="0.00073374 0.01255987 0.01281387 -0.00000043 0.00000851 0.00000128" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_2_3" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc2" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla2_black" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla2_green" />
+          <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link2" />
+          <body name="left_link3" pos="-0.236 0 0">
+            <joint name="left_joint3" type="hinge" axis="0 0 -1" limited="true" range="-0.2 3.14" damping="0.5" frictionloss="0" />
+            <inertial pos="0.1034272 -0.0664138 -0.0271069" mass="1.062" fullinertia="0.00046807 0.00632695 0.00648221 -0.00003456 -0.0000426 0.00000006" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc3" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_4" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla3_black" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla3_seeed_wordmark" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_wordmark_black_mat" type="mesh" mesh="pla3_seeed_wordmark_backing" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla3_green" />
+            <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link3" />
+            <body name="left_link4" pos="0.228 -0.072746 0.0045">
+              <joint name="left_joint4" type="hinge" axis="0 0 -1" limited="true" range="-1.57 1.57" damping="0.5" frictionloss="0" />
+              <inertial pos="0.0475545 -0.0441113 -0.0314112" mass="0.66" fullinertia="0.00045986 0.00075258 0.00066742 0.00024219 0 0" />
+              <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_5" />
+              <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc4" />
+              <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link4" />
+              <body name="left_link5" pos="0.087 -0.048 -0.03075" quat="0.7071055 -0.7071081 0 0">
+                <joint name="left_joint5" type="hinge" axis="0 0 -1" limited="true" range="-1.57 1.57" damping="0.5" frictionloss="0" />
+                <inertial pos="-0.0114401 0.0000048 0.0480487" mass="0.1501205" fullinertia="0.0000734238 0.0000551539 0.000052992 0.0000000136 -0.0000008581 -0.0000000133" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_6" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc5" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla5_green" />
+                <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link5" />
+                <body name="left_link6" pos="0.0365 0 0.048" quat="0.7071055 0 0.7071081 0">
+                  <joint name="left_joint6" type="hinge" axis="0 0 -1" limited="true" range="-3.14 3.14" damping="2.0" frictionloss="0.1" />
+                  <inertial pos="0.000018 0 0.0043481" mass="0.03" fullinertia="0.0000044227 0.0000043719 0.000008543 0 0.0000000002 0" />
+                  <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="link6" />
+                  <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link6" />
+                  <body name="left_gripper_end" pos="0 0 0.16621" quat="-0.0000026 0.7071055 0.0000026 0.7071081">
+                    <inertial pos="-0.1127517 0.0001284 -0.0000057" mass="0.65" fullinertia="0.00037354 0.0001583 0.00045353 -0.00000011 0.0000005 0.00000348" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla7_green" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc7" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_7" />
+                    <geom name="left_d405_wrist_mount" type="mesh" mesh="d405_wrist_mount" pos="-0.086309 -0.000001456 0.000001" quat="0.5 0.5 0.5 0.5" group="1" contype="0" conaffinity="0" material="d405_mount_mat" />
+                    <geom name="left_d405_camera_body" type="box" size="0.021 0.021 0.0115" pos="-0.078896708 -0.009 0.066321644" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_housing_mat" />
+                    <geom name="left_d405_camera_front" type="box" size="0.0202 0.0202 0.001" pos="-0.068071708 -0.009 0.060071644" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_front_mat" />
+                    <geom name="left_d405_left_imager" type="cylinder" size="0.0055 0.0012" pos="-0.066166 -0.0000 0.058972" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_lens_mat" />
+                    <geom name="left_d405_right_imager" type="cylinder" size="0.0055 0.0012" pos="-0.066166 -0.0180 0.058972" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_lens_mat" />
+                    <camera name="left_wrist_rgb" pos="-0.072141710 0 0.062421644" xyaxes="0 -1 0 0.5 0 0.866025404" fovy="62.82" />
+                    <geom name="left_gripper_palm_collision" pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" type="mesh" mesh="gripper_end" friction="1.2 0.10 0.02" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    <site name="left_tcp" pos="0 0 0" size="0.01" rgba="1 0 0 0.3" group="2" />
+                    <body name="left_gripper_coupler" pos="0 0 0">
+                      <joint name="left_joint7" type="slide" axis="0 1 0" limited="true" range="0 0.05" damping="1.0" frictionloss="0.1" />
+                      <inertial pos="0 0 0" mass="0.001" diaginertia="0.000001 0.000001 0.000001" />
+                    </body>
+                    <body name="left_gripper_left" pos="-0.041939 -0.0000734 0" quat="0.4999982 0.5 -0.5 0.5000018">
+                      <joint name="left_joint_left" type="slide" axis="0 0 1" limited="true" range="0 0.05" damping="5.0" frictionloss="0.5" />
+                      <inertial pos="-0.0021801 0.018709 0.0093219" mass="0.0752" diaginertia="0.0000109878 0.0000095015 0.0000093078" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla_left" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc_left" />
+                      <geom name="left_gripper_left_front_collision" type="mesh" mesh="gripper_left_front_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_left_mid_collision" type="mesh" mesh="gripper_left_mid_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_left_rear_collision" type="mesh" mesh="gripper_left_rear_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_left_carriage_collision" type="mesh" mesh="gripper_left_carriage_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_left_stop_collision" type="mesh" mesh="gripper_left_stop_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    </body>
+                    <body name="left_gripper_right" pos="-0.041939 0.0000734 0" quat="0.4999982 -0.5 -0.5 -0.5000018">
+                      <joint name="left_joint_right" type="slide" axis="0 0 1" limited="true" range="0 0.0715" damping="5.0" frictionloss="0.5" />
+                      <inertial pos="0.0021801 -0.018709 0.0093219" mass="0.0752" diaginertia="0.0000109878 0.0000095015 0.0000093078" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla_right" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc_right" />
+                      <geom name="left_gripper_right_front_collision" type="mesh" mesh="gripper_right_front_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_right_mid_collision" type="mesh" mesh="gripper_right_mid_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_right_rear_collision" type="mesh" mesh="gripper_right_rear_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_right_carriage_collision" type="mesh" mesh="gripper_right_carriage_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="left_gripper_right_stop_collision" type="mesh" mesh="gripper_right_stop_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="right_base_link" pos="0 0.34 0.90">
+      <inertial pos="0.0000029 -0.0001223 0.0243376" mass="1.1774" fullinertia="0.0013304 0.00213119 0.00275877 0.00000001 0 0" />
+      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_base_black_mat" type="mesh" mesh="base_link" />
+      <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="base_link" />
+      <body name="right_link1" pos="-0.0003428 -0.0009868 0.075">
+        <joint name="right_joint1" type="hinge" axis="0 0 -1" limited="true" range="-2.8 2.8" damping="0.5" frictionloss="0" />
+        <inertial pos="0.0081765 0.0012258 0.033142" mass="0.4655" fullinertia="0.00025207 0.00015464 0.00023416 0 -0.00002832 0" />
+        <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="link1" />
+        <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link1" />
+        <body name="right_link2" pos="0.020343 0.027237 0.07" quat="0.7071055 -0.7071081 0 0">
+          <joint name="right_joint2" type="hinge" axis="0 0 1" limited="true" range="-0.2 3.14" damping="0.5" frictionloss="0" />
+          <inertial pos="-0.1178648 -0.0034223 -0.0271552" mass="1.772" fullinertia="0.00073374 0.01255987 0.01281387 -0.00000043 0.00000851 0.00000128" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_2_3" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc2" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla2_black" />
+          <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla2_green" />
+          <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link2" />
+          <body name="right_link3" pos="-0.236 0 0">
+            <joint name="right_joint3" type="hinge" axis="0 0 -1" limited="true" range="-0.2 3.14" damping="0.5" frictionloss="0" />
+            <inertial pos="0.1034272 -0.0664138 -0.0271069" mass="1.062" fullinertia="0.00046807 0.00632695 0.00648221 -0.00003456 -0.0000426 0.00000006" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc3" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_4" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla3_black" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla3_seeed_wordmark" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_wordmark_black_mat" type="mesh" mesh="pla3_seeed_wordmark_backing" />
+            <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla3_green" />
+            <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link3" />
+            <body name="right_link4" pos="0.228 -0.072746 0.0045">
+              <joint name="right_joint4" type="hinge" axis="0 0 -1" limited="true" range="-1.57 1.57" damping="0.5" frictionloss="0" />
+              <inertial pos="0.0475545 -0.0441113 -0.0314112" mass="0.66" fullinertia="0.00045986 0.00075258 0.00066742 0.00024219 0 0" />
+              <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_5" />
+              <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc4" />
+              <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link4" />
+              <body name="right_link5" pos="0.087 -0.048 -0.03075" quat="0.7071055 -0.7071081 0 0">
+                <joint name="right_joint5" type="hinge" axis="0 0 -1" limited="true" range="-1.57 1.57" damping="0.5" frictionloss="0" />
+                <inertial pos="-0.0114401 0.0000048 0.0480487" mass="0.1501205" fullinertia="0.0000734238 0.0000551539 0.000052992 0.0000000136 -0.0000008581 -0.0000000133" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_6" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc5" />
+                <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla5_green" />
+                <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link5" />
+                <body name="right_link6" pos="0.0365 0 0.048" quat="0.7071055 0 0.7071081 0">
+                  <joint name="right_joint6" type="hinge" axis="0 0 -1" limited="true" range="-3.14 3.14" damping="2.0" frictionloss="0.1" />
+                  <inertial pos="0.000018 0 0.0043481" mass="0.03" fullinertia="0.0000044227 0.0000043719 0.000008543 0 0.0000000002 0" />
+                  <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="link6" />
+                  <geom pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" type="mesh" mesh="link6" />
+                  <body name="right_gripper_end" pos="0 0 0.16621" quat="-0.0000026 0.7071055 0.0000026 0.7071081">
+                    <inertial pos="-0.1127517 0.0001284 -0.0000057" mass="0.65" fullinertia="0.00037354 0.0001583 0.00045353 -0.00000011 0.0000005 0.00000348" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_seeed_green_mat" type="mesh" mesh="pla7_green" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc7" />
+                    <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_motor_black_mat" type="mesh" mesh="motor_7" />
+                    <geom name="right_d405_wrist_mount" type="mesh" mesh="d405_wrist_mount" pos="-0.086309 -0.000001456 0.000001" quat="0.5 0.5 0.5 0.5" group="1" contype="0" conaffinity="0" material="d405_mount_mat" />
+                    <geom name="right_d405_camera_body" type="box" size="0.021 0.021 0.0115" pos="-0.078896708 -0.009 0.066321644" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_housing_mat" />
+                    <geom name="right_d405_camera_front" type="box" size="0.0202 0.0202 0.001" pos="-0.068071708 -0.009 0.060071644" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_front_mat" />
+                    <geom name="right_d405_left_imager" type="cylinder" size="0.0055 0.0012" pos="-0.066166 -0.0000 0.058972" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_lens_mat" />
+                    <geom name="right_d405_right_imager" type="cylinder" size="0.0055 0.0012" pos="-0.066166 -0.0180 0.058972" xyaxes="0 1 0 0.5 0 0.866025404" group="1" contype="0" conaffinity="0" material="d405_lens_mat" />
+                    <camera name="right_wrist_rgb" pos="-0.072141710 0 0.062421644" xyaxes="0 -1 0 0.5 0 0.866025404" fovy="62.82" />
+                    <geom name="right_gripper_palm_collision" pos="0 0 0" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" type="mesh" mesh="gripper_end" friction="1.2 0.10 0.02" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    <site name="right_tcp" pos="0 0 0" size="0.01" rgba="1 0 0 0.3" group="2" />
+                    <body name="right_gripper_coupler" pos="0 0 0">
+                      <joint name="right_joint7" type="slide" axis="0 1 0" limited="true" range="0 0.05" damping="1.0" frictionloss="0.1" />
+                      <inertial pos="0 0 0" mass="0.001" diaginertia="0.000001 0.000001 0.000001" />
+                    </body>
+                    <body name="right_gripper_left" pos="-0.041939 -0.0000734 0" quat="0.4999982 0.5 -0.5 0.5000018">
+                      <joint name="right_joint_left" type="slide" axis="0 0 1" limited="true" range="0 0.05" damping="5.0" frictionloss="0.5" />
+                      <inertial pos="-0.0021801 0.018709 0.0093219" mass="0.0752" diaginertia="0.0000109878 0.0000095015 0.0000093078" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla_left" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc_left" />
+                      <geom name="right_gripper_left_front_collision" type="mesh" mesh="gripper_left_front_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_left_mid_collision" type="mesh" mesh="gripper_left_mid_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_left_rear_collision" type="mesh" mesh="gripper_left_rear_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_left_carriage_collision" type="mesh" mesh="gripper_left_carriage_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_left_stop_collision" type="mesh" mesh="gripper_left_stop_collision" pos="0 -0.041939 -0.0000734" quat="0.4999982 -0.5 0.5 -0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    </body>
+                    <body name="right_gripper_right" pos="-0.041939 0.0000734 0" quat="0.4999982 -0.5 -0.5 -0.5000018">
+                      <joint name="right_joint_right" type="slide" axis="0 0 1" limited="true" range="0 0.0715" damping="5.0" frictionloss="0.5" />
+                      <inertial pos="0.0021801 -0.018709 0.0093219" mass="0.0752" diaginertia="0.0000109878 0.0000095015 0.0000093078" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_pla_black_mat" type="mesh" mesh="pla_right" />
+                      <geom pos="0 0 0" group="1" contype="0" conaffinity="0" material="rs_anodized_silver_mat" type="mesh" mesh="cnc_right" />
+                      <geom name="right_gripper_right_front_collision" type="mesh" mesh="gripper_right_front_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_right_mid_collision" type="mesh" mesh="gripper_right_mid_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_right_rear_collision" type="mesh" mesh="gripper_right_rear_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" margin="0.00015" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_right_carriage_collision" type="mesh" mesh="gripper_right_carriage_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                      <geom name="right_gripper_right_stop_collision" type="mesh" mesh="gripper_right_stop_collision" pos="0 0.041939 -0.0000734" quat="0.4999982 0.5 0.5 0.5000018" rgba="0 0 0 0" group="3" contype="1" conaffinity="1" condim="6" friction="1.5 0.04 0.01" solref="0.002 1" solimp="0.98 0.995 0.0005" />
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <light pos="1 -1 3" dir="-.2 .2 -1" directional="true" />
+    <camera name="overhead_rgb" pos=".3 0 2.3" xyaxes="0 1 0 -1 0 0" fovy="57" />
+    <geom name="floor" type="plane" pos="0 0 0" size="4 4 .02" material="floor_mat" />
+    <geom name="home_room_anchor" type="sphere" pos="0 0 0" size=".001" material="oak" contype="0" conaffinity="0" />
+    <geom name="side_wall" type="box" pos="1.15 2.25 1.30" size="1.90 .035 1.3" material="ivory" />
+    <geom name="side_skirting" type="box" pos="1.15 2.20 .055" size="1.90 .012 .055" material="trim" />
+    <geom name="sideboard_collision" type="box" pos="-.39 1.48 .42" size=".24 .58 .42" material="oak" group="3" rgba="0 0 0 0" />
+    <geom name="bookcase_collision" type="box" pos="-.47 -1.65 .62" size=".18 .40 .62" material="oak" group="3" rgba="0 0 0 0" />
+    <geom name="back_wall" type="box" pos="-.72 0 1.30" size=".035 2.6 1.3" material="wall" />
+    <geom name="skirting" type="box" pos="-.675 0 .055" size=".012 2.6 .055" material="trim" />
+    <geom name="rug" type="box" pos=".33 0 .004" size=".95 1.04 .004" material="rug" />
+    <geom name="rug_stripe_-0.88" type="box" pos=".33 -0.88 .009" size=".95 .025 .001" material="stripe" contype="0" conaffinity="0" />
+    <geom name="rug_stripe_-0.77" type="box" pos=".33 -0.77 .009" size=".95 .025 .001" material="stripe" contype="0" conaffinity="0" />
+    <geom name="rug_stripe_0.77" type="box" pos=".33 0.77 .009" size=".95 .025 .001" material="stripe" contype="0" conaffinity="0" />
+    <geom name="rug_stripe_0.88" type="box" pos=".33 0.88 .009" size=".95 .025 .001" material="stripe" contype="0" conaffinity="0" />
+    <geom name="window_recess" type="box" pos="-.674 .1 1.40" size=".012 .76 .48" material="art" />
+    <geom name="window_glass" type="box" pos="-.653 .1 1.40" size=".008 .70 .42" material="ivory" />
+    <geom name="window_upright_-0.64" type="box" pos="-.63 -0.64 1.40" size=".025 .018 .45" material="trim" />
+    <geom name="window_upright_0.1" type="box" pos="-.63 0.1 1.40" size=".025 .018 .45" material="trim" />
+    <geom name="window_upright_0.84" type="box" pos="-.63 0.84 1.40" size=".025 .018 .45" material="trim" />
+    <geom name="window_cross_0.95" type="box" pos="-.63 .1 0.95" size=".025 .76 .018" material="trim" />
+    <geom name="window_cross_1.4" type="box" pos="-.63 .1 1.4" size=".025 .76 .018" material="trim" />
+    <geom name="window_cross_1.85" type="box" pos="-.63 .1 1.85" size=".025 .76 .018" material="trim" />
+    <geom name="window_sill" type="box" pos="-.60 .1 .94" size=".10 .84 .025" material="trim" />
+    <geom name="picture_frame" type="box" pos="-.66 -1.08 1.40" size=".025 .19 .25" material="oak" />
+    <geom name="picture_paper" type="box" pos="-.63 -1.08 1.40" size=".006 .16 .22" material="ivory" />
+    <geom name="picture_art" type="ellipsoid" pos="-.62 -1.08 1.40" size=".008 .105 .14" material="art" contype="0" conaffinity="0" />
+    <body name="task_table">
+      <geom name="tabletop" type="box" pos=".455 0 .815" size=".325 .68 .025" material="oak_light" friction="1.8 .02 .002" />
+      <geom name="robot_mounting_rail" type="box" pos="-.035 0 .795" size=".165 .68 .105" material="ivory" />
+      <geom name="leg_-0.13_-0.6" type="box" pos="-0.13 -0.6 .401" size=".032 .032 .389" material="oak" />
+      <geom name="table_foot_-0.13_-0.6" type="box" pos="-0.13 -0.6 .010" size=".033 .033 .010" material="art" />
+      <geom name="leg_-0.13_0.6" type="box" pos="-0.13 0.6 .401" size=".032 .032 .389" material="oak" />
+      <geom name="table_foot_-0.13_0.6" type="box" pos="-0.13 0.6 .010" size=".033 .033 .010" material="art" />
+      <geom name="leg_0.71_-0.6" type="box" pos="0.71 -0.6 .401" size=".032 .032 .389" material="oak" />
+      <geom name="table_foot_0.71_-0.6" type="box" pos="0.71 -0.6 .010" size=".033 .033 .010" material="art" />
+      <geom name="leg_0.71_0.6" type="box" pos="0.71 0.6 .401" size=".032 .032 .389" material="oak" />
+      <geom name="table_foot_0.71_0.6" type="box" pos="0.71 0.6 .010" size=".033 .033 .010" material="art" />
+      <geom name="table_apron_long_-0.6" type="box" pos=".29 -0.6 .746" size=".42 .018 .044" material="oak" />
+      <geom name="table_stretcher_long_-0.6" type="box" pos=".29 -0.6 .25" size=".42 .014 .023" material="oak" />
+      <geom name="table_apron_long_0.6" type="box" pos=".29 0.6 .746" size=".42 .018 .044" material="oak" />
+      <geom name="table_stretcher_long_0.6" type="box" pos=".29 0.6 .25" size=".42 .014 .023" material="oak" />
+      <geom name="table_apron_end_-0.13" type="box" pos="-0.13 0 .746" size=".018 .60 .044" material="oak" />
+      <geom name="table_stretcher_end_-0.13" type="box" pos="-0.13 0 .25" size=".014 .60 .023" material="oak" />
+      <geom name="table_apron_end_0.71" type="box" pos="0.71 0 .746" size=".018 .60 .044" material="oak" />
+      <geom name="table_stretcher_end_0.71" type="box" pos="0.71 0 .25" size=".014 .60 .023" material="oak" />
+      <geom name="table_cleat_0.17_-0.55" type="box" pos="0.17 -0.55 .786" size=".045 .035 .004" material="steel" />
+      <geom name="table_cleat_0.17_0.55" type="box" pos="0.17 0.55 .786" size=".045 .035 .004" material="steel" />
+      <geom name="table_cleat_0.66_-0.55" type="box" pos="0.66 -0.55 .786" size=".045 .035 .004" material="steel" />
+      <geom name="table_cleat_0.66_0.55" type="box" pos="0.66 0.55 .786" size=".045 .035 .004" material="steel" />
+      <geom name="tray_bottom" type="box" pos=".40 -.34 .844" size=".12 .145 .004" material="ivory" />
+      <geom name="tray_rail_-0.49" type="box" pos=".40 -0.49 .850" size=".12 .005 .010" material="ivory" />
+      <geom name="tray_rail_-0.19" type="box" pos=".40 -0.19 .850" size=".12 .005 .010" material="ivory" />
+      <geom name="tray_end_0.275" type="box" pos="0.275 -.34 .850" size=".005 .15 .010" material="ivory" />
+      <geom name="tray_end_0.525" type="box" pos="0.525 -.34 .850" size=".005 .15 .010" material="ivory" />
+      <geom name="basket_bottom" type="box" pos=".40 .34 .844" size=".12 .145 .004" material="basket" />
+      <geom name="basket_wall_y_0.19" type="box" pos=".40 0.19 .868" size=".12 .004 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
+      <geom name="basket_wall_y_0.49" type="box" pos=".40 0.49 .868" size=".12 .004 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
+      <geom name="basket_wall_x_0.275" type="box" pos="0.275 .34 .868" size=".004 .15 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
+      <geom name="basket_wall_x_0.525" type="box" pos="0.525 .34 .868" size=".004 .15 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
+      <geom name="utensil_rest_0.326" type="box" pos="0.326 .085 0.8827499999999999" size=".006 .018 0.04275000000000001" material="oak" />
+      <geom name="utensil_rest_0.4314" type="box" pos="0.4314 .085 0.85175" size=".006 .018 0.011750000000000038" material="oak" />
+      <geom name="utensil_rest_stop" type="box" pos=".452 .085 .854" size=".003 .018 .014" material="oak" friction="2 .02 .002" />
+    </body>
+    <body name="egg" pos=".21 -.46 .864">
+      <freejoint name="egg_free" />
+      <geom name="egg_visual" type="ellipsoid" pos="0 0 0" size=".018 .024 .024" material="egg" contype="0" conaffinity="0" mass="0" />
+      <geom name="egg_collision" type="box" pos="0 0 0" size=".018 .016 .020" material="egg" rgba="0 0 0 0" group="3" mass=".04" friction="3.5 .08 .01" solref=".002 1" solimp=".99 .995 .0005" />
+    </body>
+    <body name="spool" pos=".26 -.18 .862">
+      <freejoint name="spool_free" />
+      <geom name="spool_visual" type="cylinder" pos="0 0 0" size=".019 .022" material="spool" contype="0" conaffinity="0" mass="0" />
+      <geom name="spool_collision" type="box" pos="0 0 0" size=".018 .016 .020" material="spool" rgba="0 0 0 0" group="3" mass=".04" friction="3.5 .08 .01" solref=".002 1" solimp=".99 .995 .0005" />
+    </body>
+    <body name="apple" pos=".21 .46 .863">
+      <freejoint name="apple_free" />
+      <geom name="apple_visual" type="ellipsoid" pos="0 0 0" size=".023 .023 .023" material="apple" contype="0" conaffinity="0" mass="0" />
+      <geom name="apple_collision" type="box" pos="0 0 0" size=".018 .016 .020" material="apple" rgba="0 0 0 0" group="3" mass=".04" friction="3.5 .08 .01" solref=".002 1" solimp=".99 .995 .0005" />
+      <geom name="apple_stem" type="cylinder" pos="0 0 .025" size=".002 .006" material="oak" contype="0" conaffinity="0" mass="0" />
+    </body>
+    <body name="lime" pos=".20 .18 .861">
+      <freejoint name="lime_free" />
+      <geom name="lime_visual" type="ellipsoid" pos="0 0 0" size=".021 .018 .021" material="lime" contype="0" conaffinity="0" mass="0" />
+      <geom name="lime_collision" type="box" pos="0 0 0" size=".018 .016 .020" material="lime" rgba="0 0 0 0" group="3" mass=".04" friction="3.5 .08 .01" solref=".002 1" solimp=".99 .995 .0005" />
+      <geom name="lime_stem" type="cylinder" pos="0 0 .025" size=".002 .006" material="oak" contype="0" conaffinity="0" mass="0" />
+    </body>
+    <body name="coop_cup" pos=".29 -.07 .884">
+      <freejoint name="coop_cup_free" />
+      <geom name="cup_visual" type="cylinder" pos="0 0 0" size=".037 .042" material="ceramic" contype="0" conaffinity="0" mass="0" />
+      <geom name="cup_bottom_collision" type="cylinder" pos="0 0 -.039" size=".034 .003" material="ceramic" group="3" rgba="0 0 0 0" mass=".085" friction="1.6 .02 .002" />
+      <geom name="cup_wall_0" type="box" pos="0.035000 0.000000 0" size=".003 .0052 .042" material="ceramic" euler="0 0 0.0" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_1" type="box" pos="0.033807 0.009059 0" size=".003 .0052 .042" material="ceramic" euler="0 0 0.2617993877991494" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_2" type="box" pos="0.030311 0.017500 0" size=".003 .0052 .042" material="ceramic" euler="0 0 0.5235987755982988" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_3" type="box" pos="0.024749 0.024749 0" size=".003 .0052 .042" material="ceramic" euler="0 0 0.7853981633974483" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_4" type="box" pos="0.017500 0.030311 0" size=".003 .0052 .042" material="ceramic" euler="0 0 1.0471975511965976" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_5" type="box" pos="0.009059 0.033807 0" size=".003 .0052 .042" material="ceramic" euler="0 0 1.3089969389957472" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_6" type="box" pos="0.000000 0.035000 0" size=".003 .0052 .042" material="ceramic" euler="0 0 1.5707963267948966" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_7" type="box" pos="-0.009059 0.033807 0" size=".003 .0052 .042" material="ceramic" euler="0 0 1.832595714594046" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_8" type="box" pos="-0.017500 0.030311 0" size=".003 .0052 .042" material="ceramic" euler="0 0 2.0943951023931953" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_9" type="box" pos="-0.024749 0.024749 0" size=".003 .0052 .042" material="ceramic" euler="0 0 2.356194490192345" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_10" type="box" pos="-0.030311 0.017500 0" size=".003 .0052 .042" material="ceramic" euler="0 0 2.6179938779914944" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_11" type="box" pos="-0.033807 0.009059 0" size=".003 .0052 .042" material="ceramic" euler="0 0 2.8797932657906435" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_12" type="box" pos="-0.035000 0.000000 0" size=".003 .0052 .042" material="ceramic" euler="0 0 3.141592653589793" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_13" type="box" pos="-0.033807 -0.009059 0" size=".003 .0052 .042" material="ceramic" euler="0 0 3.4033920413889427" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_14" type="box" pos="-0.030311 -0.017500 0" size=".003 .0052 .042" material="ceramic" euler="0 0 3.665191429188092" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_15" type="box" pos="-0.024749 -0.024749 0" size=".003 .0052 .042" material="ceramic" euler="0 0 3.926990816987241" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_16" type="box" pos="-0.017500 -0.030311 0" size=".003 .0052 .042" material="ceramic" euler="0 0 4.1887902047863905" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_17" type="box" pos="-0.009059 -0.033807 0" size=".003 .0052 .042" material="ceramic" euler="0 0 4.4505895925855405" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_18" type="box" pos="-0.000000 -0.035000 0" size=".003 .0052 .042" material="ceramic" euler="0 0 4.71238898038469" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_19" type="box" pos="0.009059 -0.033807 0" size=".003 .0052 .042" material="ceramic" euler="0 0 4.974188368183839" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_20" type="box" pos="0.017500 -0.030311 0" size=".003 .0052 .042" material="ceramic" euler="0 0 5.235987755982989" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_21" type="box" pos="0.024749 -0.024749 0" size=".003 .0052 .042" material="ceramic" euler="0 0 5.497787143782138" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_22" type="box" pos="0.030311 -0.017500 0" size=".003 .0052 .042" material="ceramic" euler="0 0 5.759586531581287" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_wall_23" type="box" pos="0.033807 -0.009059 0" size=".003 .0052 .042" material="ceramic" euler="0 0 6.021385919380436" group="3" rgba="0 0 0 0" mass=".002" friction="1.4 .02 .002" solref=".004 1" />
+      <geom name="cup_handle_0" type="capsule" size=".0035" fromto="0 -0.036 0.026 0 -0.04312499999999999 0.028316249999999998" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_1" type="capsule" size=".0035" fromto="0 -0.04312499999999999 0.028316249999999998 0 -0.0495 0.02908" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_2" type="capsule" size=".0035" fromto="0 -0.0495 0.02908 0 -0.05512499999999999 0.02846375" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_3" type="capsule" size=".0035" fromto="0 -0.05512499999999999 0.02846375 0 -0.06000000000000001 0.026640000000000004" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_4" type="capsule" size=".0035" fromto="0 -0.06000000000000001 0.026640000000000004 0 -0.06412499999999999 0.023781249999999997" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_5" type="capsule" size=".0035" fromto="0 -0.06412499999999999 0.023781249999999997 0 -0.06749999999999998 0.02005999999999999" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_6" type="capsule" size=".0035" fromto="0 -0.06749999999999998 0.02005999999999999 0 -0.07012499999999999 0.01564875" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_7" type="capsule" size=".0035" fromto="0 -0.07012499999999999 0.01564875 0 -0.07199999999999998 0.010719999999999995" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_8" type="capsule" size=".0035" fromto="0 -0.07199999999999998 0.010719999999999995 0 -0.07312500000000001 0.00544625000000001" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_9" type="capsule" size=".0035" fromto="0 -0.07312500000000001 0.00544625000000001 0 -0.07350000000000001 -4.336808689942018e-19" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_10" type="capsule" size=".0035" fromto="0 -0.07350000000000001 -4.336808689942018e-19 0 -0.073125 -0.0054462500000000014" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_11" type="capsule" size=".0035" fromto="0 -0.073125 -0.0054462500000000014 0 -0.07200000000000001 -0.01072" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_12" type="capsule" size=".0035" fromto="0 -0.07200000000000001 -0.01072 0 -0.07012499999999999 -0.01564875" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_13" type="capsule" size=".0035" fromto="0 -0.07012499999999999 -0.01564875 0 -0.06749999999999999 -0.020059999999999995" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_14" type="capsule" size=".0035" fromto="0 -0.06749999999999999 -0.020059999999999995 0 -0.06412499999999999 -0.023781249999999997" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_15" type="capsule" size=".0035" fromto="0 -0.06412499999999999 -0.023781249999999997 0 -0.05999999999999999 -0.026640000000000004" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_16" type="capsule" size=".0035" fromto="0 -0.05999999999999999 -0.026640000000000004 0 -0.055125 -0.028463750000000003" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_17" type="capsule" size=".0035" fromto="0 -0.055125 -0.028463750000000003 0 -0.049499999999999995 -0.02908" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_18" type="capsule" size=".0035" fromto="0 -0.049499999999999995 -0.02908 0 -0.043125000000000004 -0.02831625" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+      <geom name="cup_handle_19" type="capsule" size=".0035" fromto="0 -0.043125000000000004 -0.02831625 0 -0.036 -0.026" material="ceramic" group="3" rgba="0 0 0 0" mass=".001" />
+    </body>
+    <body name="coop_spoon" pos=".35 .085 .914" quat=".965925826 0 .258819045 0">
+      <freejoint name="coop_spoon_free" />
+      <geom name="spoon_visual" type="box" pos="0 0 0" size=".062 .006 .002" material="steel" contype="0" conaffinity="0" mass="0" />
+      <geom name="spoon_handle_collision" type="box" pos=".017 0 0" size=".052 .0037 .0014" material="steel" group="3" rgba="0 0 0 0" mass=".008" friction="1.5 .02 .002" solref=".004 1" />
+      <geom name="spoon_bowl_collision" type="ellipsoid" pos=".094 0 -.001" size=".020 .013 .003" material="steel" group="3" rgba="0 0 0 0" mass=".017" friction="1.5 .02 .002" solref=".004 1" />
+    </body>
+    <geom name="plant_pot" type="cylinder" pos="-.28 -.96 .19" size=".13 .19" material="terracotta" />
+    <geom name="plant_soil" type="cylinder" pos="-.28 -.96 .383" size=".118 .006" material="soil" />
+    <geom name="leaf_0" type="ellipsoid" pos="-0.180 -0.960 0.560" size=".07 .035 .17" material="leaf" euler=".4 0.00 0.00" contype="0" conaffinity="0" />
+    <geom name="leaf_1" type="ellipsoid" pos="-0.354 -0.892 0.586" size=".07 .035 .17" material="leaf" euler=".4 0.68 2.40" contype="0" conaffinity="0" />
+    <geom name="leaf_2" type="ellipsoid" pos="-0.271 -1.060 0.612" size=".07 .035 .17" material="leaf" euler=".4 -1.00 4.80" contype="0" conaffinity="0" />
+    <geom name="leaf_3" type="ellipsoid" pos="-0.219 -0.881 0.638" size=".07 .035 .17" material="leaf" euler=".4 0.79 7.20" contype="0" conaffinity="0" />
+    <geom name="leaf_4" type="ellipsoid" pos="-0.378 -0.977 0.664" size=".07 .035 .17" material="leaf" euler=".4 -0.17 9.60" contype="0" conaffinity="0" />
+    <geom name="leaf_5" type="ellipsoid" pos="-0.196 -1.014 0.690" size=".07 .035 .17" material="leaf" euler=".4 -0.54 12.00" contype="0" conaffinity="0" />
+    <geom name="leaf_6" type="ellipsoid" pos="-0.306 -0.863 0.716" size=".07 .035 .17" material="leaf" euler=".4 0.97 14.40" contype="0" conaffinity="0" />
+    <geom name="leaf_7" type="ellipsoid" pos="-0.326 -1.049 0.742" size=".07 .035 .17" material="leaf" euler=".4 -0.89 16.80" contype="0" conaffinity="0" />
+    <geom name="leaf_8" type="ellipsoid" pos="-0.186 -0.926 0.768" size=".07 .035 .17" material="leaf" euler=".4 0.34 19.20" contype="0" conaffinity="0" />
+  </worldbody>
+  <contact>
+    <exclude body1="left_gripper_left" body2="left_gripper_right" />
+    <exclude body1="left_base_link" body2="left_link1" />
+    <exclude body1="left_link1" body2="left_link2" />
+    <exclude body1="left_link2" body2="left_link3" />
+    <exclude body1="left_link2" body2="left_link5" />
+    <exclude body1="left_link3" body2="left_link4" />
+    <exclude body1="left_link3" body2="left_link5" />
+    <exclude body1="left_link4" body2="left_link5" />
+    <exclude body1="left_link5" body2="left_link6" />
+    <exclude body1="right_gripper_left" body2="right_gripper_right" />
+    <exclude body1="right_base_link" body2="right_link1" />
+    <exclude body1="right_link1" body2="right_link2" />
+    <exclude body1="right_link2" body2="right_link3" />
+    <exclude body1="right_link2" body2="right_link5" />
+    <exclude body1="right_link3" body2="right_link4" />
+    <exclude body1="right_link3" body2="right_link5" />
+    <exclude body1="right_link4" body2="right_link5" />
+    <exclude body1="right_link5" body2="right_link6" />
+    <exclude body1="left_gripper_end" body2="coop_cup" />
+    <exclude body1="left_gripper_coupler" body2="coop_cup" />
+    <exclude body1="left_gripper_left" body2="coop_cup" />
+    <exclude body1="left_gripper_right" body2="coop_cup" />
+    <exclude body1="right_gripper_end" body2="coop_spoon" />
+    <exclude body1="right_gripper_coupler" body2="coop_spoon" />
+  </contact>
+  <equality>
+    <joint joint1="left_joint7" joint2="left_joint_left" polycoef="0 1 0 0 0" solref="0.001 1" solimp="0.99 0.99 0.001" />
+    <joint joint1="left_joint7" joint2="left_joint_right" polycoef="0 1 0 0 0" solref="0.001 1" solimp="0.99 0.99 0.001" />
+    <joint joint1="right_joint7" joint2="right_joint_left" polycoef="0 1 0 0 0" solref="0.001 1" solimp="0.99 0.99 0.001" />
+    <joint joint1="right_joint7" joint2="right_joint_right" polycoef="0 1 0 0 0" solref="0.001 1" solimp="0.99 0.99 0.001" />
+    <weld name="cup_grasp" body1="left_gripper_end" body2="coop_cup" active="false" solref=".012 1" solimp=".999 .999 .0001" torquescale="1" />
+    <weld name="spoon_grasp" body1="right_gripper_end" body2="coop_spoon" active="false" solref=".012 1" solimp=".999 .999 .0001" torquescale="1" />
+  </equality>
+  <actuator>
+    <motor name="left_joint1_motor" joint="left_joint1" ctrlrange="-36 36" gear="1" />
+    <motor name="left_joint2_motor" joint="left_joint2" ctrlrange="-36 36" gear="1" />
+    <motor name="left_joint3_motor" joint="left_joint3" ctrlrange="-36 36" gear="1" />
+    <motor name="left_joint4_motor" joint="left_joint4" ctrlrange="-14 14" gear="1" />
+    <motor name="left_joint5_motor" joint="left_joint5" ctrlrange="-14 14" gear="1" />
+    <motor name="left_joint6_motor" joint="left_joint6" ctrlrange="-14 14" gear="1" />
+    <motor name="left_joint7_motor" joint="left_joint7" ctrlrange="-500 500" gear="1" />
+    <motor name="right_joint1_motor" joint="right_joint1" ctrlrange="-36 36" gear="1" />
+    <motor name="right_joint2_motor" joint="right_joint2" ctrlrange="-36 36" gear="1" />
+    <motor name="right_joint3_motor" joint="right_joint3" ctrlrange="-36 36" gear="1" />
+    <motor name="right_joint4_motor" joint="right_joint4" ctrlrange="-14 14" gear="1" />
+    <motor name="right_joint5_motor" joint="right_joint5" ctrlrange="-14 14" gear="1" />
+    <motor name="right_joint6_motor" joint="right_joint6" ctrlrange="-14 14" gear="1" />
+    <motor name="right_joint7_motor" joint="right_joint7" ctrlrange="-500 500" gear="1" />
+  </actuator>
+</mujoco>

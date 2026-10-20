@@ -11,6 +11,7 @@
   "variant.label": "产品配置",
   "variant.aria": "选择产品配置",
   "variant.arm": "标准机械臂",
+  "variant.dual": "双臂 · 家居桌面",
   "variant.agv": "AGV 底盘款",
   "agv.title": "AGV 驾驶",
   "agv.driveSpeed": "行驶速度",
