@@ -30,25 +30,26 @@ export function createPhysicsController(
 ) {
   const jointType = mujoco.mjtObj.mjOBJ_JOINT.value;
   const actuatorType = mujoco.mjtObj.mjOBJ_ACTUATOR.value;
+  const prefix = joints.prefix || '';
 
   const arm = ARM_JOINTS.map((joint, index) => {
-    const id = namedId(mujoco, model, jointType, joint.name);
+    const id = namedId(mujoco, model, jointType, `${prefix}${joint.name}`);
     return {
       name: joint.name,
       qposadr: model.jnt_qposadr[id],
       dofadr: model.jnt_dofadr[id],
-      actuatorId: namedId(mujoco, model, actuatorType, `${joint.name}_motor`),
+      actuatorId: namedId(mujoco, model, actuatorType, `${prefix}${joint.name}_motor`),
       kp: ARM_KP[index],
       kd: ARM_KD[index],
       tauLimit: ARM_TAU_LIMIT[index]
     };
   });
 
-  const gripperJointId = namedId(mujoco, model, jointType, 'joint7');
+  const gripperJointId = namedId(mujoco, model, jointType, `${prefix}joint7`);
   const gripper = {
     qposadr: model.jnt_qposadr[gripperJointId],
     dofadr: model.jnt_dofadr[gripperJointId],
-    actuatorId: namedId(mujoco, model, actuatorType, 'joint7_motor')
+    actuatorId: namedId(mujoco, model, actuatorType, `${prefix}joint7_motor`)
   };
 
   const targets = homePose(joints);
@@ -124,5 +125,5 @@ export function createPhysicsController(
     return { joints: samples, rmsError };
   }
 
-  return { targets, setTarget, setTargets, step, reset, telemetry };
+  return { targets, setTarget, setTargets, applyCtrl, step, reset, telemetry };
 }

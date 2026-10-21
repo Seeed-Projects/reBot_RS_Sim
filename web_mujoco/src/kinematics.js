@@ -13,10 +13,10 @@ export const GRIPPER_JOINTS = [
   { name: 'joint_right', min: 0, max: 0.05, home: 0, unit: 'm', hidden: true }
 ];
 
-export function bindJoints(mujoco, model) {
+export function bindJoints(mujoco, model, prefix = '') {
   const type = mujoco.mjtObj.mjOBJ_JOINT.value;
   const entries = [...ARM_JOINTS, ...GRIPPER_JOINTS].map((joint) => {
-    const id = mujoco.mj_name2id(model, type, joint.name);
+    const id = mujoco.mj_name2id(model, type, `${prefix}${joint.name}`);
     if (id < 0) throw new Error(`找不到关节 ${joint.name}`);
     return {
       ...joint,
@@ -25,6 +25,7 @@ export function bindJoints(mujoco, model) {
     };
   });
   return {
+    prefix,
     all: entries,
     visible: entries.filter((joint) => !joint.hidden),
     byName: Object.fromEntries(entries.map((joint) => [joint.name, joint]))

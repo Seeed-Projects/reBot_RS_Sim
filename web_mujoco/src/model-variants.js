@@ -1,6 +1,19 @@
 import { CAMPUS_LAYOUT } from './campus-layout.js';
 
 export const MODEL_VARIANTS = Object.freeze({
+  dual: Object.freeze({
+    id: 'dual',
+    sceneXml: 'rs_dual_tabletop_scene.xml',
+    labelKey: 'variant.dual',
+    hasAgv: false,
+    view: Object.freeze({
+      environment: 'home',
+      position: [1.65, -1.85, 1.95],
+      target: [0.24, 0, 0.83],
+      near: 0.04,
+      far: 20
+    })
+  }),
   arm: Object.freeze({
     id: 'arm',
     sceneXml: 'rs_grasp_scene.xml',

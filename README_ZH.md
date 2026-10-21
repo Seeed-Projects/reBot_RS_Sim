@@ -37,10 +37,17 @@ npm run dev
 | 配置 | 入口 | 场景 |
 | --- | --- | --- |
 | 标准机械臂（默认） | `/?variant=arm` | `rs_grasp_scene.xml`，包含工作台和抓取物体 |
+| 双臂家居桌面 | `/?variant=dual` | `rs_dual_tabletop_scene.xml`，双 reBot、木桌、托盘、收纳篮和物品整理 |
 | AGV 底盘款 | `/?variant=agv` | `rs_agv_scene.xml`，包含移动底盘和实验室 |
 | AGV 园区街区 | `/?variant=agv-campus` | `rs_agv_campus_scene.xml`，包含三栋居民楼、十字路口和服务区域 |
 
 页面顶部可以切换配置。AGV 款支持 WASD / 方向键驾驶、空格停车、地面选点导航和“前往抓取区”；停靠后可执行抓取任务。首次加载需要下载场景网格。
+
+双臂家居场景可一键把鸡蛋、线轴整理到托盘，把苹果、青柠整理到收纳篮，也可单件整理。
+新增杯勺协作：左臂拿稳杯子，右臂夹勺柄、对准杯口送入，随后松勺并将杯子放回桌面。
+协作使用可释放的辅助夹持约束；分类整理继续使用夹爪接触。房间补充餐边柜、层架、窗帘、座椅和厨房小物，
+杯子、杯耳、金属餐勺与水果增加细节。下方任务卡片可折叠，另有房间全景与协作特写。
+支持暂停、复位、速度和相机视角切换，使用 MuJoCo 接触物理抓取。该场景执行预设任务，尚未接入自然语言控制。
 
 园区模式新增充电 / 配送区导航快捷入口和跟随相机，目前用于导航停靠演示，不模拟电池充电或物流任务。详细街景在网页中显示，原生 MuJoCo 使用简化建筑轮廓，尚未配置 ROS / Nav2 园区地图。
 
@@ -182,6 +189,8 @@ Web 检查在 `web_mujoco/` 执行，无需启动 ROS：
 npm run smoke
 npm run test:loading
 npm run test:reset
+npm run test:dual
+npm run test:cooperation
 npm run test:variants
 npm run test:campus
 npm run test:explode
