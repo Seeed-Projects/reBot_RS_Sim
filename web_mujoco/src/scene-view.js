@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createLabProp, disposeLabProp } from './lab-props-view.js';
+import { createHomeProp, createHomeEnvironmentTexture, createWoodTexture } from './home-props-view.js';
 import { createCampusGroundGeometry } from './campus-ground.js';
 import { resolveExplosionLayout } from './explosion-layout.js';
 import {
@@ -387,10 +388,14 @@ function createEnvironmentTexture() {
 export function createSceneView(host, options = {}) {
   const scene = new THREE.Scene();
   const campus = options.environment === 'campus';
+  const home = options.environment === 'home';
+  const homeWood = home ? createWoodTexture() : null;
+  const homeFloor = home ? createWoodTexture(true) : null;
   let campusEnvironment = null;
   const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   const backdropTexture = createBackdropTexture();
   scene.background = backdropTexture;
+  if (home) scene.background = new THREE.Color(0xe6e3d9);
   if (campus) {
     scene.background = new THREE.Color(0xc6d9dc);
     scene.fog = new THREE.Fog(0xc6d9dc, 45, 100);
@@ -402,13 +407,18 @@ export function createSceneView(host, options = {}) {
   camera.up.set(0, 0, 1);
   camera.position.set(...(options.position || [0.85, -0.95, 0.62]));
   camera.layers.enable(MAIN_VIEW_HELPER_LAYER);
-  const overheadCamera = new THREE.PerspectiveCamera(48, 4 / 3, 0.02, 4);
-  overheadCamera.matrixAutoUpdate = false;
-  const wristCamera = new THREE.PerspectiveCamera(62.82, 4 / 3, 0.02, 4);
-  wristCamera.matrixAutoUpdate = false;
   const previewDocument = host.ownerDocument;
-  const overheadCanvas = previewDocument.getElementById('overhead-camera-canvas');
-  const wristCanvas = previewDocument.getElementById('wrist-camera-canvas');
+  const cameraPreviews = [
+    ['overhead', 'overhead_rgb', 'overhead-camera-canvas', 48],
+    ['wrist', 'wrist_rgb', 'wrist-camera-canvas', 62.82],
+    ['left-wrist', 'left_wrist_rgb', 'left-wrist-camera-canvas', 62.82],
+    ['right-wrist', 'right_wrist_rgb', 'right-wrist-camera-canvas', 62.82]
+  ].map(([key, name, canvasId, fov]) => {
+    const previewCamera = new THREE.PerspectiveCamera(fov, 4 / 3, 0.02, 4);
+    previewCamera.matrixAutoUpdate = false;
+    return { key, name, camera: previewCamera, canvas: previewDocument.getElementById(canvasId),
+      renderer: null, cameraId: -1, enabled: false };
+  });
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -426,14 +436,10 @@ export function createSceneView(host, options = {}) {
 
   const ndc = new THREE.Vector3();
   const CAMERA_PREVIEW_INTERVAL_MS = 100;
-  const overheadRenderer = overheadCanvas
-    ? new THREE.WebGLRenderer({ canvas: overheadCanvas, antialias: true, powerPreference: 'low-power' })
-    : null;
-  const wristRenderer = wristCanvas
-    ? new THREE.WebGLRenderer({ canvas: wristCanvas, antialias: true, powerPreference: 'low-power' })
-    : null;
-  [overheadRenderer, wristRenderer].forEach((previewRenderer) => {
-    if (!previewRenderer) return;
+  cameraPreviews.forEach((preview) => {
+    if (!preview.canvas) return;
+    const previewRenderer = new THREE.WebGLRenderer({ canvas: preview.canvas, antialias: true, powerPreference: 'low-power' });
+    preview.renderer = previewRenderer;
     previewRenderer.setPixelRatio(1);
     previewRenderer.setSize(320, 240, false);
     previewRenderer.shadowMap.enabled = false;
@@ -473,7 +479,7 @@ export function createSceneView(host, options = {}) {
   }
 
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const environmentSource = createEnvironmentTexture();
+  const environmentSource = home ? createHomeEnvironmentTexture() : createEnvironmentTexture();
   const environmentTexture = pmrem.fromEquirectangular(environmentSource).texture;
   scene.environment = environmentTexture;
   environmentSource.dispose();
@@ -529,6 +535,20 @@ export function createSceneView(host, options = {}) {
     key.position.set(9, -12, 20);
     Object.assign(key.shadow.camera, { far: 70, left: -20, right: 20, top: 18, bottom: -18 });
     key.shadow.camera.updateProjectionMatrix();
+  }
+  if (home) {
+    for (const light of [cyanRim, blueRim, side, rim]) light.intensity = 0;
+    scene.children.find((object) => object.isAmbientLight)?.color.set(0xfff2d9);
+    hemisphere.color.set(0xfff6e8);
+    hemisphere.groundColor.set(0x8d8068);
+    hemisphere.intensity = 1.5;
+    softbox.position.set(.3, -1, 2.5);
+    softbox.color.set(0xffefd7);
+    softbox.lookAt(.3, 0, .74);
+    key.color.set(0xffefd9);
+    key.intensity = 2.1;
+    key.position.set(-.3, -1.8, 3);
+    key.shadow.normalBias = .001;
   }
 
   const tcpMarker = new THREE.Mesh(
@@ -730,10 +750,6 @@ export function createSceneView(host, options = {}) {
   let selectionListener = null;
   let pickStart = null;
   let lastCameraPreviewAt = -Infinity;
-  let overheadCameraId = -1;
-  let wristCameraId = -1;
-  let overheadCameraEnabled = false;
-  let wristCameraEnabled = false;
   let cameraModelVisible = true;
   let objectInteraction = {
     enabled: false,
@@ -772,7 +788,8 @@ export function createSceneView(host, options = {}) {
       if (campus && namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i).startsWith('campus-building-')) continue;
       const type = model.geom_type[i];
       const size = model.geom_size.subarray(i * 3, i * 3 + 3);
-      const labProp = createLabProp(
+      const geomName = namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i);
+      const labProp = (home && createHomeProp(geomName)) || createLabProp(
         namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i),
         size
       );
@@ -798,10 +815,10 @@ export function createSceneView(host, options = {}) {
       if (!geometry) continue;
       let material;
       if (type === types.plane) {
-        if (!campus && !gridTexture) gridTexture = createGridTexture();
+        if (!campus && !home && !gridTexture) gridTexture = createGridTexture();
         material = new THREE.MeshStandardMaterial({
-          map: campus ? null : gridTexture,
-          color: campus ? 0xffffff : 0x41658f,
+          map: home ? homeFloor : campus ? null : gridTexture,
+          color: home || campus ? 0xffffff : 0x41658f,
           vertexColors: campus,
           metalness: 0.1,
           roughness: 0.82,
@@ -809,6 +826,11 @@ export function createSceneView(host, options = {}) {
         });
       } else {
         material = geomMaterial(model, i, materialProps);
+        if (home && /^(tabletop|leg_|table_apron)/.test(geomName)) {
+          material.map = homeWood;
+          material.color.set(0xffffff);
+          material.roughness = .85;
+        }
       }
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = type !== types.plane;
@@ -884,20 +906,13 @@ export function createSceneView(host, options = {}) {
       ...explodableMeshes.map((mesh) => mesh.userData.explosionStage + 1)
     );
     const cameraType = mujoco.mjtObj.mjOBJ_CAMERA?.value;
-    overheadCameraId = cameraType == null
-      ? -1
-      : mujoco.mj_name2id(model, cameraType, 'overhead_rgb');
-    wristCameraId = cameraType == null
-      ? -1
-      : mujoco.mj_name2id(model, cameraType, 'wrist_rgb');
-    for (const [previewCamera, cameraId] of [
-      [overheadCamera, overheadCameraId],
-      [wristCamera, wristCameraId]
-    ]) {
+    for (const preview of cameraPreviews) {
+      const cameraId = cameraType == null ? -1 : mujoco.mj_name2id(model, cameraType, preview.name);
+      preview.cameraId = cameraId;
       const modelFov = Number(model.cam_fovy?.[cameraId]);
       if (cameraId >= 0 && Number.isFinite(modelFov) && modelFov > 0) {
-        previewCamera.fov = modelFov;
-        previewCamera.updateProjectionMatrix();
+        preview.camera.fov = modelFov;
+        preview.camera.updateProjectionMatrix();
       }
     }
   }
@@ -1058,8 +1073,9 @@ export function createSceneView(host, options = {}) {
       selectionHelper.updateMatrixWorld(true);
     }
     if (data.cam_xpos && data.cam_xmat) {
-      if (overheadCameraId >= 0) setPose(overheadCamera, data.cam_xpos, data.cam_xmat, overheadCameraId);
-      if (wristCameraId >= 0) setPose(wristCamera, data.cam_xpos, data.cam_xmat, wristCameraId);
+      for (const preview of cameraPreviews) {
+        if (preview.cameraId >= 0) setPose(preview.camera, data.cam_xpos, data.cam_xmat, preview.cameraId);
+      }
     }
     notifyTimeline();
   }
@@ -1082,13 +1098,9 @@ export function createSceneView(host, options = {}) {
     });
     controls.update();
     renderer.render(scene, camera);
-    if (now - lastCameraPreviewAt >= CAMERA_PREVIEW_INTERVAL_MS &&
-        (overheadCameraEnabled || wristCameraEnabled)) {
-      if (overheadCameraEnabled && overheadRenderer) {
-        overheadRenderer.render(scene, overheadCamera);
-      }
-      if (wristCameraEnabled && wristRenderer) {
-        wristRenderer.render(scene, wristCamera);
+    if (now - lastCameraPreviewAt >= CAMERA_PREVIEW_INTERVAL_MS) {
+      for (const preview of cameraPreviews) {
+        if (preview.enabled && preview.canvas.getClientRects().length) preview.renderer.render(scene, preview.camera);
       }
       lastCameraPreviewAt = now;
     }
@@ -1237,17 +1249,18 @@ export function createSceneView(host, options = {}) {
     navigationPath.material.color.setHex(colors[state] || colors.selected);
   }
 
-  function setOverheadCameraEnabled(enabled) {
-    overheadCameraEnabled = Boolean(enabled && overheadCameraId >= 0 && overheadRenderer);
-    if (overheadCameraEnabled) lastCameraPreviewAt = -Infinity;
-    return overheadCameraEnabled;
+  function setCameraPreviewEnabled(key, enabled) {
+    const preview = cameraPreviews.find(item => item.key === key);
+    if (!preview) return false;
+    preview.enabled = Boolean(enabled && preview.cameraId >= 0 && preview.renderer);
+    if (preview.enabled) lastCameraPreviewAt = -Infinity;
+    return preview.enabled;
   }
 
-  function setWristCameraEnabled(enabled) {
-    wristCameraEnabled = Boolean(enabled && wristCameraId >= 0 && wristRenderer);
-    if (wristCameraEnabled) lastCameraPreviewAt = -Infinity;
-    return wristCameraEnabled;
-  }
+  const wristPreviewKey = side => side ? `${side}-wrist` : 'wrist';
+  const findPreview = key => cameraPreviews.find(item => item.key === key);
+  const setOverheadCameraEnabled = enabled => setCameraPreviewEnabled('overhead', enabled);
+  const setWristCameraEnabled = (enabled, side) => setCameraPreviewEnabled(wristPreviewKey(side), enabled);
 
   function timelineState() {
     const state = evaluateExplosionTimeline(timelineProgress, explosionStageCount);
@@ -1667,20 +1680,28 @@ export function createSceneView(host, options = {}) {
     setNavigationGoalMarker,
     setNavigationPath,
     setCameraMode,
+    setViewPreset(position, target) {
+      controls.enableDamping = false;
+      controls.update();
+      camera.position.set(...position);
+      controls.target.set(...target);
+      controls.update();
+      controls.enableDamping = true;
+    },
     setOrbitEnabled,
     setOverheadCameraEnabled,
     isOverheadCameraEnabled() {
-      return overheadCameraEnabled;
+      return findPreview('overhead').enabled;
     },
     hasOverheadCamera() {
-      return overheadCameraId >= 0;
+      return findPreview('overhead').cameraId >= 0;
     },
     setWristCameraEnabled,
-    isWristCameraEnabled() {
-      return wristCameraEnabled;
+    isWristCameraEnabled(side) {
+      return findPreview(wristPreviewKey(side))?.enabled || false;
     },
-    hasWristCamera() {
-      return wristCameraId >= 0;
+    hasWristCamera(side) {
+      return (findPreview(wristPreviewKey(side))?.cameraId ?? -1) >= 0;
     },
     setCameraModelVisible,
     isCameraModelVisible() {
@@ -1739,10 +1760,11 @@ export function createSceneView(host, options = {}) {
       navigationGoalCheck.material.dispose();
       navigationPathGeometry.dispose();
       navigationPath.material.dispose();
-      overheadRenderer?.dispose();
-      wristRenderer?.dispose();
+      cameraPreviews.forEach(preview => preview.renderer?.dispose());
       if (gridTexture) { gridTexture.dispose(); gridTexture = null; }
       backdropTexture.dispose();
+      homeWood?.dispose();
+      homeFloor?.dispose();
       environmentTexture.dispose();
       controls.dispose();
       renderer.dispose();

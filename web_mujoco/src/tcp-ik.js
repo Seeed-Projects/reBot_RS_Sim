@@ -64,8 +64,9 @@ function solve3x3(a, b) {
 
 export function createTcpIk(mujoco, model, data, joints) {
   const bodyType = mujoco.mjtObj.mjOBJ_BODY.value;
-  let bodyId = mujoco.mj_name2id(model, bodyType, 'gripper_end');
-  if (bodyId < 0) bodyId = mujoco.mj_name2id(model, bodyType, 'link6');
+  const prefix = joints.prefix || '';
+  let bodyId = mujoco.mj_name2id(model, bodyType, `${prefix}gripper_end`);
+  if (bodyId < 0) bodyId = mujoco.mj_name2id(model, bodyType, `${prefix}link6`);
   if (bodyId < 0) throw new Error('找不到末端 body gripper_end / link6');
 
   const arm = ARM_JOINTS.map((joint) => ({

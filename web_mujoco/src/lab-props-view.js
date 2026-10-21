@@ -119,6 +119,7 @@ export function createLabProp(geomName, halfSize) {
 export function disposeLabProp(group) {
   group.traverse((object) => {
     object.geometry?.dispose();
+    object.material?.map?.dispose();
     object.material?.dispose();
   });
 }
