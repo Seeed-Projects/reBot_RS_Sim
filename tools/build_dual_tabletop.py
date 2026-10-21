@@ -108,7 +108,28 @@ def build():
         geom(table, f'basket_wall_y_{y}', 'box', f'.40 {y} .868', '.12 .004 .028', 'basket', rgba='.53 .37 .20 0', group='3')
     for x in [.275, .525]:
         geom(table, f'basket_wall_x_{x}', 'box', f'{x} .34 .868', '.004 .15 .028', 'basket', rgba='.53 .37 .20 0', group='3')
-    # Four objects use broad flat collision soles to avoid rolling before grasping.
+    # Match the procedural surfaces in tabletop-props-view.js. A shared small
+    # box used to leave up to 8 mm of visible fruit outside its collision shape.
+    for name in ('egg', 'apple', 'lime'):
+        vertices = []
+        for ring in range(33):
+            z = math.cos(math.pi * ring / 32)
+            radius = math.sin(math.pi * ring / 32)
+            for segment in range(48):
+                theta = 2 * math.pi * segment / 48
+                x, y = radius * math.cos(theta), radius * math.sin(theta)
+                if name == 'egg':
+                    point = (x*.018*(1-z*.17), y*.021*(1-z*.17), z*.024)
+                elif name == 'apple':
+                    lobe = 1 + .055*math.cos(theta*5)*(1-z*z)
+                    point = (x*.023*lobe, y*.023*lobe,
+                             z*.023 - math.copysign(.004, z)*math.exp(-radius*radius/.065))
+                else:
+                    lobe = 1 + .012*math.sin(theta*17+z*13)
+                    point = (x*.021*lobe, y*.018*lobe, z*.021)
+                vertices.extend(point)
+        ET.SubElement(asset, 'mesh', name=name+'_hull',
+                      vertex=' '.join(f'{value:.8f}' for value in vertices))
     objects = [('egg', '.21 -.46 .864', 'ellipsoid', '.018 .024 .024'),
                ('spool', '.26 -.18 .862', 'cylinder', '.019 .022'),
                ('apple', '.21 .46 .863', 'ellipsoid', '.023 .023 .023'),
@@ -117,8 +138,22 @@ def build():
         body = ET.SubElement(world, 'body', name=name, pos=pos)
         ET.SubElement(body, 'freejoint', name=name+'_free')
         geom(body, name+'_visual', shape, '0 0 0', size, name, contype='0', conaffinity='0', mass='0')
-        geom(body, name+'_collision', 'box', '0 0 0', '.018 .016 .020', name,
-             rgba='0 0 0 0', group='3', mass='.04', friction='3.5 .08 .01', solref='.002 1', solimp='.99 .995 .0005')
+        collision_attrs = dict(rgba='0 0 0 0', group='3', friction='3.5 .08 .01',
+                               solref='.002 1', solimp='.99 .995 .0005', condim='6')
+        if name == 'spool':
+            geom(body, name+'_collision', 'cylinder', '0 0 0', '.01765 .017', name,
+                 mass='.03', **collision_attrs)
+            for side, z in [('bottom', '-.0185'), ('top', '.0185')]:
+                geom(body, f'{name}_{side}_collision', 'cylinder', f'0 0 {z}', '.022 .0015', name,
+                     mass='.005', **collision_attrs)
+        else:
+            ET.SubElement(body, 'geom', name=name+'_collision', type='mesh', mesh=name+'_hull',
+                          mass='.04', **collision_attrs)
+            # A small underside pad keeps curved props steady on the tabletop;
+            # it does not replace the surface touched by the fingers.
+            bottom = {'egg': -.024, 'apple': -.020, 'lime': -.021}[name]
+            geom(body, name+'_sole', 'box', f'0 0 {bottom+.0015}', '.008 .008 .0015', name,
+                 mass='.002', **collision_attrs)
         if name in ('apple', 'lime'):
             geom(body, name+'_stem', 'cylinder', '0 0 .025', '.002 .006', 'oak', contype='0', conaffinity='0', mass='0')
     cup = ET.SubElement(world, 'body', name='coop_cup', pos='.29 -.07 .884')

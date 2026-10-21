@@ -66,3 +66,42 @@ try {
 } finally {
   data.delete(); model.delete(); vfs.delete();
 }
+
+// Standard-arm motion must take the same wall time on slow and fast displays.
+const armVfs = new mujoco.MjVFS();
+const armXml = await readFile(new URL('rs_arm.xml', modelDir), 'utf8');
+armVfs.addBuffer('rs_arm.xml', new TextEncoder().encode(armXml));
+const armScene = await readFile(new URL('rs_grasp_scene.xml', modelDir), 'utf8');
+for (const file of new Set([...armXml.matchAll(/\sfile="([^"]+\.(?:stl|obj|msh))"/gi)].map(match => `meshes/${match[1]}`))) {
+  armVfs.addBuffer(file, await readFile(new URL(file, modelDir)));
+}
+const armModel = mujoco.MjModel.from_xml_string(armScene, armVfs);
+const armData = new mujoco.MjData(armModel);
+try {
+  const joints = bindJoints(mujoco, armModel);
+  const armPhysics = createPhysicsController(mujoco, armModel, armData, joints);
+  let referencePositions;
+  for (const fps of [5, 30, 60, 144]) {
+    armPhysics.reset();
+    armPhysics.setTarget('joint1', 0.5);
+    const timer = createSimulationClock(armModel.opt.timestep);
+    timer.reset(0);
+    let previousControlTime = 0;
+    for (let frame = 1; frame <= fps * 3; frame += 1) {
+      advanceSimulation(armPhysics, timer.steps(frame * 1000 / fps), () => {
+        assert(armData.time - previousControlTime <= 0.012001, 'Arm control cadence must stay within 12 ms');
+        previousControlTime = armData.time;
+      });
+    }
+    assert(Math.abs(armData.time - 3) < 1e-6, `${fps} FPS: arm must run at 1x`);
+    const positions = joints.visible.map(joint => armData.qpos[joint.qposadr]);
+    assert(Math.abs(positions[0] - 0.5) < 0.02, 'Arm must reach the commanded joint angle');
+    if (referencePositions) positions.forEach((value, index) => {
+      assert(Math.abs(value - referencePositions[index]) < 1e-9, `${fps} FPS: arm motion changed with frame rate`);
+    });
+    referencePositions = positions;
+    console.log(`${fps} FPS: standard arm advanced 3 simulation seconds in 3 wall seconds`);
+  }
+} finally {
+  armData.delete(); armModel.delete(); armVfs.delete();
+}

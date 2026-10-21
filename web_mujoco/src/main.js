@@ -1,6 +1,6 @@
 import { loadMujocoModule, loadRsScene } from './load-model.js';
 import { bindJoints, homePose, readAngles } from './kinematics.js';
-import { STEPS_PER_FRAME, createPhysicsController } from './pd-control.js';
+import { createPhysicsController } from './pd-control.js';
 import { advanceSimulation, createSimulationClock } from './simulation-clock.js';
 import { createSceneView } from './scene-view.js';
 import { createJointCallouts } from './ui.js';
@@ -1005,12 +1005,8 @@ async function main() {
     animationFrameId = 0;
     if (document.hidden) return;
     const now = performance.now();
-    if (modelVariant.hasAgv) {
-      advanceSimulation(physics, simulationClock.steps(now), () => graspDemo.update());
-    } else {
-      graspDemo.update();
-      physics.step(graspDemo.isRunning() ? 12 : STEPS_PER_FRAME);
-    }
+    // Advance every variant in wall time, independent of rendering frame rate.
+    advanceSimulation(physics, simulationClock.steps(now), () => graspDemo.update());
     if (modelVariant.hasAgv && agvSimulationTimingEl) {
       if (timingStartedAt === null || data.time < timingStartedSimulationTime) {
         timingStartedAt = now;

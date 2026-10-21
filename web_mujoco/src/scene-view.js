@@ -451,6 +451,12 @@ export function createSceneView(host, options = {}) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(...(options.target || [0.28, 0, 0.16]));
   controls.enableDamping = true;
+  // The default 0.05 damping leaves a long, heavy-feeling camera trail.
+  // Keep a short smoothing tail and make small mouse movements more useful.
+  controls.dampingFactor = .18;
+  controls.rotateSpeed = 1.15;
+  controls.panSpeed = 1.15;
+  controls.zoomSpeed = 1.25;
   let cameraMode = 'overview';
   let followBodyId = -1;
   const followPosition = new THREE.Vector3();

@@ -35,8 +35,13 @@ export function createHomeRoom(woodTexture) {
     add(finish, color, new THREE.TorusGeometry(radius, tube, 8, 32), p, rotation);
   }
   function plant(x, y, z, scale = 1) {
-    cylinder('ceramic', 0xd1c3a4, [x, y, z + .045 * scale], .045 * scale, .09 * scale, .052 * scale);
-    cylinder('matte', 0x403426, [x, y, z + .088 * scale], .046 * scale, .004 * scale);
+    // An open vessel avoids a solid top cap overlapping the soil at z + .09.
+    const profile = [[0, 0], [.043, 0], [.045, .004], [.052, .087],
+      [.052, .090], [.047, .090], [.046, .083], [.040, .008], [0, .008]];
+    const pot = new THREE.LatheGeometry(profile.map(([r, h]) =>
+      new THREE.Vector2(r * scale, h * scale)), 40).rotateX(Math.PI / 2);
+    add('ceramic', 0xd1c3a4, pot, [x, y, z]);
+    cylinder('matte', 0x403426, [x, y, z + .081 * scale], .0455 * scale, .004 * scale);
     for (let i = 0; i < 9; i++) {
       const a = i * 2.4;
       const end = [x + Math.cos(a) * .05 * scale, y + Math.sin(a) * .05 * scale, z + (.17 + i % 3 * .025) * scale];
