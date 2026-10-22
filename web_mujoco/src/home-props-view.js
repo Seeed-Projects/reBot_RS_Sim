@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createHomeRoom } from './home-room-view.js';
 import { createTabletopProp } from './tabletop-props-view.js';
+import { createCoffeeMachine } from './coffee-view.js';
 
 export function createHomeEnvironmentTexture() {
   const canvas = document.createElement('canvas');
@@ -56,6 +57,7 @@ export function createWoodTexture(floor = false) {
 }
 
 export function createHomeProp(name) {
+  if (name === 'coffee_machine_visual') return createCoffeeMachine();
   if (name === 'home_room_anchor') return createHomeRoom(createWoodTexture());
   const tabletop = createTabletopProp(name);
   if (tabletop) return tabletop;

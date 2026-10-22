@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createLabProp, disposeLabProp } from './lab-props-view.js';
 import { createHomeProp, createHomeEnvironmentTexture, createWoodTexture } from './home-props-view.js';
+import { createCoffeeVisuals } from './coffee-view.js';
 import { createCampusGroundGeometry } from './campus-ground.js';
 import { resolveExplosionLayout } from './explosion-layout.js';
 import {
@@ -389,6 +390,7 @@ export function createSceneView(host, options = {}) {
   const scene = new THREE.Scene();
   const campus = options.environment === 'campus';
   const home = options.environment === 'home';
+  const coffeeVisuals = home ? createCoffeeVisuals(scene) : null;
   const homeWood = home ? createWoodTexture() : null;
   const homeFloor = home ? createWoodTexture(true) : null;
   let campusEnvironment = null;
@@ -1670,6 +1672,7 @@ export function createSceneView(host, options = {}) {
   resize();
 
   return {
+    setCoffeeState(state) { coffeeVisuals?.update(state); },
     build,
     async loadEnvironment() {
       if (!campus || campusEnvironment) return;
@@ -1741,6 +1744,7 @@ export function createSceneView(host, options = {}) {
     setContactVisuals,
     camera,
     dispose() {
+      coffeeVisuals?.dispose();
       campusEnvironment?.dispose();
       observer.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPickPointerDown);

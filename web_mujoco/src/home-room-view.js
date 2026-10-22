@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { FEEDING_LAYOUT } from './feeding-layout.js';
 
 // Room furniture is built in world metres and batched by finish. Adding a
 // complete room does not introduce hundreds of separate shadow draw calls.
@@ -139,14 +140,36 @@ export function createHomeRoom(woodTexture) {
   plant(-.55, .55, .967, .78);
   // Two dining chairs with rounded upholstered seats and slatted backs.
   for (const side of [-1, 1]) {
-    const y = side * 1.13, back = y + side * .19;
-    for (const x of [.48, .82]) for (const offset of [-.15, .15]) rod('wood', 0xab8a5d, [x + (x < .6 ? -.025 : .025), y + offset * 1.16, .02], [x, y + offset, .46], .018);
-    box('wood', 0xbaa077, [.65, y, .45], [.43, .40, .04], .016);
-    box('fabric', side < 0 ? 0xb28c65 : 0x8c9e83, [.65, y, .487], [.405, .38, .055], .025);
-    for (const x of [.48, .82]) rod('wood', 0xaf926a, [x, back, .44], [x, back + side * .045, .95], .016);
-    box('wood', 0xbfa67d, [.65, back + side * .04, .925], [.39, .035, .09], .014);
-    for (const x of [.55, .65, .75]) rod('wood', 0xbea780, [x, back, .53], [x, back + side * .035, .88], .010);
+    const cx = side > 0 ? FEEDING_LAYOUT.chair[0] : .65;
+    const y = side > 0 ? FEEDING_LAYOUT.chair[1] : -1.13, back = y + side * .19;
+    for (const x of [cx-.17, cx+.17]) for (const offset of [-.15, .15]) rod('wood', 0xab8a5d, [x + (x < cx ? -.025 : .025), y + offset * 1.16, .02], [x, y + offset, .46], .018);
+    box('wood', 0xbaa077, [cx, y, .45], [.43, .40, .04], .016);
+    box('fabric', side < 0 ? 0xb28c65 : 0x8c9e83, [cx, y, .487], [.405, .38, .055], .025);
+    for (const x of [cx-.17, cx+.17]) rod('wood', 0xaf926a, [x, back, .44], [x, back + side * .045, .95], .016);
+    box('wood', 0xbfa67d, [cx, back + side * .04, .925], [.39, .035, .09], .014);
+    for (const x of [cx-.1, cx, cx+.1]) rod('wood', 0xbea780, [x, back, .53], [x, back + side * .035, .88], .010);
   }
+  // Seated diner, facing -Y toward the workspace, with hands resting on the lap.
+  const [personX, personY] = FEEDING_LAYOUT.chair;
+  const skin = 0xc88f6f, shirt = 0x7796a0, trousers = 0x37464f;
+  sphere('fabric', trousers, [personX, personY, .555], [.13, .115, .075]);
+  sphere('fabric', shirt, [personX, personY-.025, .765], [.145, .105, .205]);
+  rod('matte', skin, [personX, personY-.04, .91], [personX, personY-.065, 1.02], .036);
+  sphere('matte', skin, [personX, personY-.105, 1.105], [.075, .077, .095]);
+  sphere('matte', 0x3b302c, [personX, personY-.09, 1.155], [.078, .073, .058]);
+  sphere('matte', skin, [personX, personY-.185, 1.113], [.015, .019, .023]);
+  for (const side of [-1, 1]) {
+    sphere('matte', skin, [personX+side*.074, personY-.105, 1.10], [.014, .020, .026]);
+    sphere('matte', 0x292b29, [personX+side*.028, personY-.178, 1.13], [.007, .004, .006]);
+    rod('fabric', shirt, [personX+side*.12, personY-.02, .89], [personX+side*.17, personY-.02, .71], .042);
+    rod('matte', skin, [personX+side*.17, personY-.02, .71], [personX+side*.075, personY-.15, .64], .026);
+    sphere('matte', skin, [personX+side*.075, personY-.15, .64], [.027, .040, .016]);
+    rod('fabric', trousers, [personX+side*.075, personY-.01, .555], [personX+side*.085, personY-.25, .50], .06);
+    rod('fabric', trousers, [personX+side*.085, personY-.25, .50], [personX+side*.085, personY-.23, .11], .045);
+    sphere('matte', 0xddd4bd, [personX+side*.085, personY-.28, .065], [.055, .105, .045]);
+  }
+  sphere('matte', 0x875249, [FEEDING_LAYOUT.mouth[0], FEEDING_LAYOUT.mouth[1]+.004, FEEDING_LAYOUT.mouth[2]], [.022, .008, .014]);
+  sphere('matte', 0x382626, FEEDING_LAYOUT.mouth, [.016, .006, .009]);
   // Floor lamp, framed prints and rug fringes complete the surrounding space.
   cylinder('metal', 0x5e6658, [.85, 1.80, .025], .12, .05);
   rod('metal', 0x747665, [.85, 1.80, .04], [.85, 1.80, 1.55], .009);
