@@ -31,6 +31,12 @@ jobs:
       - name: Install dependencies
         working-directory: web_mujoco
         run: npm ci
+      - name: Install browser for RGB-D verification
+        working-directory: web_mujoco
+        run: npx playwright install --with-deps chromium
+      - name: Verify actual dual-arm interface
+        working-directory: web_mujoco
+        run: npm run test:visual-ui
       - name: Verify timing, grasping and randomized cooperation
         working-directory: web_mujoco
         run: npm run test:ci
@@ -40,9 +46,6 @@ jobs:
       - name: Verify contact-only grasp, slip stops and composed return task
         working-directory: web_mujoco
         run: npm run test:contact
-      - name: Install browser for RGB-D verification
-        working-directory: web_mujoco
-        run: npx playwright install --with-deps chromium
       - name: Verify asynchronous large-WASM delivery
         working-directory: web_mujoco
         run: npm run test:delivery
@@ -52,9 +55,6 @@ jobs:
       - name: Verify lighting, materials, cup styles and composed RGB-D task
         working-directory: web_mujoco
         run: npm run test:vision:extended && npm run test:vision:return
-      - name: Verify actual dual-arm interface
-        working-directory: web_mujoco
-        run: npm run test:visual-ui
       - name: Upload cooperation benchmark
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,6 +62,7 @@ jobs:
           name: cooperation-benchmark
           path: web_mujoco/.reports/*.json
           if-no-files-found: ignore
+          include-hidden-files: true
       - name: Build for GitHub Pages
         working-directory: web_mujoco
         env:

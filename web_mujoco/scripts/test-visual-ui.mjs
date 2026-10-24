@@ -4,12 +4,19 @@ import { createServer } from 'vite';
 import { chromium } from 'playwright';
 import { MODEL_VARIANTS } from '../src/model-variants.js';
 const externalUrl=process.argv.find(arg=>arg.startsWith('--url='))?.slice(6);
+const softwareRendering=!process.argv.includes('--hardware');
+// Keep CSS layout and RGB-D sensor resolution unchanged. Only the main canvas
+// uses fewer display pixels on CPU-only CI runners.
+const deviceScaleFactor=softwareRendering ? .5 : 1;
+const observationTimeout=softwareRendering?180000:60000;
+const taskTimeout=softwareRendering?600000:240000;
 const server=externalUrl?null:await createServer({server:{host:'127.0.0.1',port:5194,strictPort:true}});
 await server?.listen();
-const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||(process.platform==='win32'?'chrome':undefined),headless:true,args:[...(process.argv.includes('--hardware')?[]:['--use-angle=swiftshader']),'--enable-webgl','--ignore-gpu-blocklist']});
-const errors=[],checks={};await mkdir('.reports',{recursive:true});
+const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||(process.platform==='win32'?'chrome':undefined),headless:true,args:[...(softwareRendering?['--use-angle=swiftshader']:[]),'--enable-webgl','--ignore-gpu-blocklist']});
+const errors=[],checks={environment:{softwareRendering,deviceScaleFactor,observationTimeout,taskTimeout}};await mkdir('.reports',{recursive:true});
+let page;
 try {
-  const page=await browser.newPage({viewport:{width:1100,height:850}});
+  page=await browser.newPage({viewport:{width:1100,height:850},deviceScaleFactor});
   page.setDefaultTimeout(90000);
   page.on('pageerror',error=>errors.push(error.message));await page.routeWebSocket('**',socket=>socket.close());
   await page.goto(externalUrl||'http://127.0.0.1:5194/?variant=dual',{waitUntil:'domcontentloaded'});
@@ -91,14 +98,16 @@ try {
   assert.equal(await page.locator('#dual-task-details').isVisible(),true);checks.fold=true;
   console.log('UI: fold controls passed');
   await page.locator('#dual-speed').selectOption('4');await page.locator('#dual-start').click({force:true});
-  await page.waitForFunction(()=>window.rebotDual.state().running,null,{timeout:60000});
-  await page.waitForFunction(()=>!window.rebotDual.state().cooperation.vision.waiting&&window.rebotDual.state().cooperation.phase==='approach',null,{timeout:60000});
+  await page.waitForFunction(()=>{const s=window.rebotDual.state();return s.running||Boolean(s.error);},null,{timeout:observationTimeout});
+  await page.waitForFunction(()=>{const s=window.rebotDual.state();return Boolean(s.error)||!s.cooperation.vision.waiting&&s.cooperation.phase==='approach';},null,{timeout:observationTimeout});
+  const started=await page.evaluate(()=>window.rebotDual.state());
+  assert.equal(started.error,'',JSON.stringify(started.cooperation.failure));
   await page.locator('#dual-pause').click({force:true});
   console.log('UI: task started and paused');
   const paused=await page.evaluate(()=>window.rebotDual.state().time);await page.waitForTimeout(600);
   assert.equal(await page.evaluate(()=>window.rebotDual.state().time),paused);checks.pause=true;
   await page.locator('#dual-pause').click({force:true});
-  await page.waitForFunction(()=>{const s=window.rebotDual.state();return s.cooperation.complete||Boolean(s.error);},null,{timeout:240000});
+  await page.waitForFunction(()=>{const s=window.rebotDual.state();return s.cooperation.complete||Boolean(s.error);},null,{timeout:taskTimeout});
   const final=await page.evaluate(()=>window.rebotDual.state());
   assert.equal(final.error,'',JSON.stringify(final.cooperation.failure));assert.equal(final.cooperation.complete,true);
   assert.equal(final.cooperation.controlMode,'visual-rgbd');assert(final.cooperation.vision.history.some(h=>h.stage==='settled-verification'));
@@ -119,7 +128,7 @@ try {
   await page.locator('#dual-task-select').selectOption('present-and-return');
   await page.locator('#dual-speed').selectOption('4');
   await page.locator('#dual-start').click({force:true});
-  await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:240000});
+  await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:taskTimeout});
   checks.returned=await page.evaluate(()=>window.rebotDual.state().cooperation);
   assert.equal(checks.returned.error,'',JSON.stringify(checks.returned.failure));assert.equal(checks.returned.complete,true);
   assert.equal(checks.returned.task,'present-and-return');assert.equal(checks.returned.inserted,false);
@@ -131,7 +140,7 @@ try {
   assert.equal(await page.locator('#dual-layout-controls').isVisible(),false);
   await page.locator('#dual-speed').selectOption('4');
   await page.locator('#dual-start').click({force:true});
-  await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:240000});
+  await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:taskTimeout});
   checks.coffee=await page.evaluate(()=>window.rebotDual.state().cooperation);
   assert.equal(checks.coffee.error,'',JSON.stringify(checks.coffee.failure));assert.equal(checks.coffee.complete,true);
   assert.equal(checks.coffee.task,'coffee-feeding');assert.equal(checks.coffee.graspMode,'assisted-weld');
@@ -145,4 +154,11 @@ try {
   await page.locator('#dual-mode-coop').click();assert.match(await page.locator('#dual-grasp-mode').textContent(),/RGB-D/);checks.modeSwitch=true;
   assert.deepEqual(errors,[]);checks.errors=errors;
   console.log('Actual UI: two pure-contact Worker RGB-D tasks, assisted coffee/feeding task, three independent cameras, pause, fold, mobile, reset and mode switching passed');
+} catch(error) {
+  checks.failure={message:error.message};
+  if(page&&!page.isClosed()) {
+    checks.failure.runtime=await page.evaluate(()=>({state:window.rebotDual?.state(),render:window.rebotDual?.renderMetrics(),status:document.getElementById('dual-status')?.textContent})).catch(cause=>({error:cause.message}));
+  }
+  console.error('UI failure snapshot',JSON.stringify(checks.failure));
+  throw error;
 } finally {await writeFile(`.reports/${externalUrl?'visual-ui-production':'visual-ui'}.json`,JSON.stringify({url:externalUrl||'development',checks,errors},null,2));await browser.close();await server?.close();}
