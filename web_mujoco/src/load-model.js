@@ -1,10 +1,15 @@
-import { compileRemoteWasm } from './wasm-loader.js';
+import {parseIncludesAndMeshes,extractMaterialProps} from './model-source.js';
+import {createModelFileStore} from './model-file-store.js';
+import {unpackStl} from './stl-transfer.js';
+import { compileRemoteWasm,initializeCompiledWasm } from './wasm-loader.js';
 
 const MODEL_DIR = `${import.meta.env.BASE_URL}models`;
 const DEFAULT_SCENE_XML = 'rs_grasp_scene.xml';
 const DOWNLOAD_CONCURRENCY = 6;
 const MAX_BUFFERED_MESH_BYTES = 16 * 1024 * 1024;
 const MODEL_VERSIONS = typeof __MODEL_VERSIONS__ === 'undefined' ? {} : __MODEL_VERSIONS__;
+const PACKED_MESH_FILES = typeof __PACKED_MESH_FILES__ === 'undefined' ? {} : __PACKED_MESH_FILES__;
+const USE_PACKED_MESHES = new URLSearchParams(globalThis.location?.search||'').get('meshTransfer')!=='gzip';
 const SUPPORTS_GZIP_STREAM = typeof DecompressionStream === 'function';
 const MUJOCO_CDN_BASE =
   typeof __MUJOCO_VERSION__ !== 'undefined'
@@ -20,9 +25,9 @@ function isMeshFile(relative) {
   return /\.(?:stl|obj|msh)$/i.test(relative);
 }
 
-function modelUrl(relative, compressed = false) {
+function modelUrl(relative, compressed = false, packed = false) {
   const version = import.meta.env.DEV ? '' : `?v=${MODEL_VERSIONS[relative] || 'dev'}`;
-  return `${MODEL_DIR}/${relative}${compressed ? '.gzbin' : ''}${version}`;
+  return `${MODEL_DIR}/${relative}${packed ? '.stlp1.gzbin' : compressed ? '.gzbin' : ''}${version}`;
 }
 
 export async function loadMujocoModule() {
@@ -42,30 +47,11 @@ export async function loadMujocoModule() {
   try {
     const compiled = await compiledReady;
     if (compiled.error) throw compiled.error;
-    return await loadMujoco({
-      instantiateWasm(imports, receiveInstance) {
-        const instance = new WebAssembly.Instance(compiled.module, imports);
-        receiveInstance(instance, compiled.module);
-        return instance.exports;
-      }
-    });
+    return await initializeCompiledWasm(loadMujoco,compiled.module);
   } catch (error) {
     console.warn(`MuJoCo WASM CDN 不可用，回退本地资源：${error?.message || error}`);
     return loadMujoco();
   }
-}
-
-function parseIncludesAndMeshes(xmlText) {
-  const files = new Set();
-  const includeRe = /<include\s+file="([^"]+)"/gi;
-  const meshRe = /\sfile="([^"]+\.(?:STL|stl|obj|msh))"/g;
-  let match;
-  while ((match = includeRe.exec(xmlText))) files.add(match[1]);
-  while ((match = meshRe.exec(xmlText))) {
-    const relative = match[1].replaceAll('\\', '/').replace(/^\.\//, '');
-    files.add(relative.startsWith('meshes/') ? relative : `meshes/${relative}`);
-  }
-  return [...files];
 }
 
 async function fetchBytes(url, onChunk) {
@@ -87,6 +73,12 @@ async function decompressGzip(bytes) {
 
 async function fetchModelBytes(relative, onChunk) {
   const compressed = SUPPORTS_GZIP_STREAM && isMeshFile(relative);
+  if(compressed&&!import.meta.env.DEV&&USE_PACKED_MESHES&&PACKED_MESH_FILES[relative]) {
+    try {
+      const packed=await fetchBytes(modelUrl(relative,true,true),onChunk);
+      return {bytes:unpackStl(await decompressGzip(packed)),transferred:packed.byteLength};
+    } catch(error) {console.warn(`紧凑模型读取失败，回退 gzip 资源：${relative}`,error);}
+  }
   if (compressed) {
     try {
       const packed = await fetchBytes(modelUrl(relative, true), onChunk);
@@ -103,86 +95,19 @@ function report(onProgress, key, vars = {}) {
   onProgress?.({ key, vars });
 }
 
-function addToVfs(vfs, name, bytes) {
-  vfs.addBuffer(name, bytes);
-}
-
-function createModel(mujoco, xmlBytes, vfs) {
-  const xml = new TextDecoder().decode(xmlBytes);
-  const errors = [];
-  try {
-    const model = mujoco.MjModel.from_xml_string(xml, vfs);
-    if (model) return model;
-  } catch (error) {
-    errors.push(error && error.message ? error.message : String(error));
-  }
-  throw new Error(`加载 MJCF 失败：${errors.join('；') || '没有可用的加载函数'}`);
-}
-
-function createModelFromVfs(mujoco, files, vfs, sceneXmlName) {
-  const sceneXml = new TextDecoder().decode(files[sceneXmlName]);
-  const model = mujoco.MjModel.from_xml_path(sceneXmlName, vfs);
-  if (model) return model;
-  try {
-    return mujoco.MjModel.from_xml_string(sceneXml, vfs);
-  } catch (error) {
-    const msg = error && error.message ? error.message : String(error);
-        throw new Error(`加载 MJCF 失败：${msg}`);
-  }
-}
-
-function extractMaterialProps(files, sceneXmlName) {
-  const props = [];
-
-  function parseSegment(text) {
-    const re = /<material\s+([^>]*)\/?>/gi;
-    let m;
-    while ((m = re.exec(text))) {
-      const attrs = m[1];
-      const name = attrs.match(/name="([^"]+)"/)?.[1] ?? '';
-      const met = parseFloat(attrs.match(/metallic="([^"]+)"/)?.[1] ?? '');
-      const rou = parseFloat(attrs.match(/roughness="([^"]+)"/)?.[1] ?? '');
-      props.push({
-        name,
-        metallic: Number.isFinite(met) ? met : null,
-        roughness: Number.isFinite(rou) ? rou : null
-      });
-    }
-  }
-
-  function parseWithIncludes(xmlText) {
-    const includeRe = /<include\s+file="([^"]+)"\s*\/?>/gi;
-    let last = 0;
-    let m;
-    while ((m = includeRe.exec(xmlText))) {
-      parseSegment(xmlText.slice(last, m.index));
-      const file = m[1];
-      if (files[file]) {
-        const txt = new TextDecoder().decode(files[file]);
-        parseWithIncludes(txt.replace(/<\/?mujoco[^>]*>/g, ''));
-      }
-      last = m.index + m[0].length;
-    }
-    parseSegment(xmlText.slice(last));
-  }
-
-  if (files[sceneXmlName]) {
-    parseWithIncludes(new TextDecoder().decode(files[sceneXmlName]));
-  }
-  return props;
-}
-
 export async function loadRsScene(
   mujoco,
   onProgress,
-  { sceneXml = DEFAULT_SCENE_XML } = {}
+  { sceneXml = DEFAULT_SCENE_XML, fileBackend = new URLSearchParams(globalThis.location?.search||'').get('modelFiles')==='vfs'?'vfs':'auto' } = {}
 ) {
+  const began=performance.now(),startup={format:'xml'};
   // Keep the comparatively expensive WASM startup and model downloads in
   // flight together. Before WASM is ready, buffer at most 16 MiB plus the
-  // in-flight requests; afterwards copy meshes directly into MjVFS.
+  // in-flight requests; afterwards copy meshes into the native file store.
   let runtimeReady = false;
   const mujocoReady = Promise.resolve(mujoco).then(
     (value) => {
+      startup.runtimeReadyMs=performance.now()-began;
       runtimeReady = true;
       return { value };
     },
@@ -194,15 +119,15 @@ export async function loadRsScene(
   const files = {};
   let loadedBytes = 0;
   let transferredBytes = 0;
-  let vfs = null;
+  let fileStore = null;
   const bufferedMeshes = new Map();
   let bufferedBytes = 0;
 
   async function requireRuntime() {
     const runtime = await mujocoReady;
     if (runtime.error) throw runtime.error;
-    if (!vfs) vfs = new runtime.value.MjVFS();
-    for (const [name, bytes] of bufferedMeshes) addToVfs(vfs, name, bytes);
+    if (!fileStore) fileStore = createModelFileStore(runtime.value,{backend:fileBackend});
+    for (const [name, bytes] of bufferedMeshes) fileStore.add(name, bytes);
     bufferedMeshes.clear();
     bufferedBytes = 0;
     return runtime.value;
@@ -267,7 +192,7 @@ export async function loadRsScene(
         activeBytes.delete(relative);
         if (runtimeReady) {
           await requireRuntime();
-          addToVfs(vfs, relative, bytes);
+          fileStore.add(relative, bytes);
         } else {
           bufferedMeshes.set(relative, bytes);
           bufferedBytes += bytes.byteLength;
@@ -281,22 +206,29 @@ export async function loadRsScene(
     }
 
     const workerCount = Math.min(DOWNLOAD_CONCURRENCY, pending.length);
-    // Let in-flight workers finish before deleting their shared VFS on error.
+    // Let in-flight workers finish before deleting their shared files on error.
     const downloads = await Promise.allSettled(Array.from({ length: workerCount }, () => downloadWorker()));
     const failed = downloads.find((result) => result.status === 'rejected');
     if (failed) throw failed.reason;
+    startup.assetsReadyMs=performance.now()-began;
 
     report(onProgress, 'status.preparingRuntime');
     const resolvedMujoco = await requireRuntime();
-    Object.entries(files).forEach(([name, bytes]) => addToVfs(vfs, name, bytes));
+    Object.entries(files).forEach(([name, bytes]) => fileStore.add(name, bytes));
     const materialProps = extractMaterialProps(files, sceneXml);
     report(onProgress, 'status.compiling', { mb: (loadedBytes / 1048576).toFixed(1) });
-    const model = createModelFromVfs(resolvedMujoco, files, vfs, sceneXml);
+    const compileBegan=performance.now();
+    const model = fileStore.load(sceneXml);
+    startup.compileMs=performance.now()-compileBegan;
+    const dataBegan=performance.now();
     const data = new resolvedMujoco.MjData(model);
     resolvedMujoco.mj_forward(model, data);
-    return { mujoco: resolvedMujoco, model, data, loadedBytes, files: [...seen], materialProps };
+    startup.dataMs=performance.now()-dataBegan;startup.totalMs=performance.now()-began;
+    startup.loadedBytes=loadedBytes;startup.transferredBytes=transferredBytes;
+    startup.fileBackend=fileStore.statistics.backend;startup.fileWriteMs=fileStore.statistics.writeMs;
+    return { mujoco: resolvedMujoco, model, data, loadedBytes, files: [...seen], materialProps,startup };
   } finally {
     bufferedMeshes.clear();
-    vfs?.delete();
+    fileStore?.dispose();
   }
 }

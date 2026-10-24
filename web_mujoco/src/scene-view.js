@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { createCameraSampler, paintCameraFrame } from './camera-sampler.js';
+import { createRenderProfiler, sceneGeometryMetrics } from './render-profiler.js';
+import { createDisplayLod } from './mesh-lod.js';
+import { setCupAppearance } from './tabletop-props-view.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createLabProp, disposeLabProp } from './lab-props-view.js';
@@ -417,7 +421,8 @@ export function createSceneView(host, options = {}) {
     const previewCamera = new THREE.PerspectiveCamera(fov, 4 / 3, 0.02, 4);
     previewCamera.matrixAutoUpdate = false;
     return { key, name, camera: previewCamera, canvas: previewDocument.getElementById(canvasId),
-      renderer: null, cameraId: -1, enabled: false };
+      context: null, imageData: null, cameraId: -1, enabled: false,
+      frames: 0, lastFrameAt: null, timestamp: null };
   });
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -435,17 +440,18 @@ export function createSceneView(host, options = {}) {
   });
 
   const ndc = new THREE.Vector3();
-  const CAMERA_PREVIEW_INTERVAL_MS = 100;
+  const cameraSampler = createCameraSampler(renderer, scene,{prepareScene:updateDisplayLod});
+  const renderProfiler=createRenderProfiler(renderer);
+  let geometryMetrics=null,wasmMemoryBytes=null;
+  let sensorTimestamp = 0;
+  const renderMetrics = { frames: 0, skippedFrames:0,mainMs: 0, maxMainMs:0,previewMs: 0,maxPreviewMs:0,sensorMs: 0, contexts: 1 };
+  const CAMERA_PREVIEW_INTERVAL_MS = 100; // Per camera, rather than per group.
+  let homeFrameDirty=true,lastHomePose=null,homePose=null,previewCursor=0,previewInFlight=null;
+  let viewDisposed=false;
   cameraPreviews.forEach((preview) => {
     if (!preview.canvas) return;
-    const previewRenderer = new THREE.WebGLRenderer({ canvas: preview.canvas, antialias: true, powerPreference: 'low-power' });
-    preview.renderer = previewRenderer;
-    previewRenderer.setPixelRatio(1);
-    previewRenderer.setSize(320, 240, false);
-    previewRenderer.shadowMap.enabled = false;
-    previewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    previewRenderer.toneMappingExposure = 1.02;
-    if ('outputColorSpace' in previewRenderer) previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    preview.canvas.width = 320; preview.canvas.height = 240;
+    preview.context = preview.canvas.getContext('2d', { alpha: false });
   });
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -483,6 +489,15 @@ export function createSceneView(host, options = {}) {
     controls.minDistance = 1.2;
     controls.maxDistance = 55;
   }
+  if (options.orbit) Object.assign(controls, options.orbit);
+  controls.update();
+  function onCameraChange() {
+    // Wheel/touch dolly calls OrbitControls.update() inside the input event.
+    // The next animation-frame update can therefore return false even though
+    // the displayed frame is stale. Invalidate on the control's change event.
+    homeFrameDirty = true;
+  }
+  controls.addEventListener('change', onCameraChange);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environmentSource = home ? createHomeEnvironmentTexture() : createEnvironmentTexture();
@@ -730,6 +745,24 @@ export function createSceneView(host, options = {}) {
   const groundMeshes = [];
   const labProps = [];
   const meshGeometries = new Map();
+  const displayLods=new Map(),lodMeshes=[];
+  const lodPoint=new THREE.Vector3(),lodCameraPoint=new THREE.Vector3();
+  const meshDetail=options.meshDetail||(home?'balanced':'full');
+  function updateDisplayLod(renderCamera,height) {
+    if(!lodMeshes.length)return;
+    renderCamera.getWorldPosition(lodCameraPoint);
+    const projection=height*renderCamera.zoom/(2*Math.tan(THREE.MathUtils.degToRad(renderCamera.fov/2)));
+    let reduced=0;
+    for(const mesh of lodMeshes) {
+      const lod=mesh.userData.displayLod;
+      mesh.getWorldPosition(lodPoint);
+      const pixels=lod.maxDisplacement*projection/Math.max(.02,lodPoint.distanceTo(lodCameraPoint));
+      const coarse=meshDetail!=='full'&&pixels<.8;
+      mesh.geometry=coarse?lod.geometry:mesh.userData.fullGeometry;
+      if(coarse)reduced++;
+    }
+    renderMetrics.lodReducedMeshes=reduced;
+  }
   const explosionCenter = new THREE.Vector3();
   const groupCenter = new THREE.Vector3();
   const partCenter = new THREE.Vector3();
@@ -776,6 +809,7 @@ export function createSceneView(host, options = {}) {
   const objectPulseColor = new THREE.Color(0x6feaff);
 
   function resize() {
+    homeFrameDirty=true;
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
     camera.aspect = width / height;
@@ -784,6 +818,9 @@ export function createSceneView(host, options = {}) {
   }
 
   function build(mujoco, model, materialProps) {
+    geometryMetrics=null;
+    wasmMemoryBytes=model.qpos0.buffer.byteLength;
+    homeFrameDirty=true;lastHomePose=null;
     clear();
     if (campus) followBodyId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, 'base_link');
     types = geomTypes(mujoco);
@@ -795,11 +832,12 @@ export function createSceneView(host, options = {}) {
       const type = model.geom_type[i];
       const size = model.geom_size.subarray(i * 3, i * 3 + 3);
       const geomName = namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i);
-      const labProp = (home && createHomeProp(geomName)) || createLabProp(
+      const labProp = (home && createHomeProp(geomName,{detail:meshDetail})) || createLabProp(
         namedObject(mujoco, model, mujoco.mjtObj.mjOBJ_GEOM.value, i),
         size
       );
       if (labProp) {
+        labProp.name=geomName;
         labProp.userData.geomIndex = i;
         scene.add(labProp);
         labProps.push(labProp);
@@ -847,6 +885,13 @@ export function createSceneView(host, options = {}) {
       mesh.userData.bodyName = bodyId >= 0
         ? (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY.value, bodyId) || `body-${bodyId}`)
         : `geom-${i}`;
+      // Keep all fingers, wrist cameras and task objects at their native
+      // resolution. Link / base CAD detail varies by sub-pixel error budget.
+      if(home&&meshDetail!=='full'&&meshId>=0&&/^(left_|right_)?(?:base_link|link[1-6])$/.test(mesh.userData.bodyName)) {
+        if(!displayLods.has(meshId))displayLods.set(meshId,createDisplayLod(geometry));
+        const lod=displayLods.get(meshId);
+        if(lod) {mesh.userData.displayLod=lod;mesh.userData.fullGeometry=geometry;lodMeshes.push(mesh);}
+      }
       mesh.userData.explosionStage = explosionStageForBody(mesh.userData.bodyName);
       if (!geometry.boundingSphere) geometry.computeBoundingSphere();
       if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -924,6 +969,11 @@ export function createSceneView(host, options = {}) {
   }
 
   function sync(data) {
+    sensorTimestamp = data.time;
+    if(home) {
+      homePose=data.qpos;
+      if(!lastHomePose||homePose.some((value,index)=>Math.abs(value-lastHomePose[index])>.00005))homeFrameDirty=true;
+    }
     if (followBodyId >= 0) {
       followPosition.fromArray(data.xpos, followBodyId * 3);
       followPosition.z += 0.25;
@@ -1102,13 +1152,44 @@ export function createSceneView(host, options = {}) {
         mesh.material.emissiveIntensity = 0.42 + objectPulse * 0.72;
       }
     });
-    controls.update();
-    renderer.render(scene, camera);
-    if (now - lastCameraPreviewAt >= CAMERA_PREVIEW_INTERVAL_MS) {
-      for (const preview of cameraPreviews) {
-        if (preview.enabled && preview.canvas.getClientRects().length) preview.renderer.render(scene, preview.camera);
-      }
-      lastCameraPreviewAt = now;
+    const cameraChanged=controls.update();
+    const previews=cameraPreviews.filter(preview=>preview.enabled&&preview.canvas.getClientRects().length);
+    const previewDue=previews.length>0&&now-lastCameraPreviewAt>=CAMERA_PREVIEW_INTERVAL_MS/previews.length;
+    const drawMain=!home||homeFrameDirty||cameraChanged;
+    if(!drawMain&&!previewDue){renderMetrics.skippedFrames++;return;}
+    const renderBegan = performance.now();
+    if(drawMain) {
+      updateDisplayLod(camera,renderer.domElement.height);
+      renderProfiler.begin();
+      try {renderer.render(scene, camera);} finally {renderProfiler.end();}
+      renderMetrics.mainTriangles=renderer.info.render.triangles;renderMetrics.mainDrawCalls=renderer.info.render.calls;
+      renderMetrics.mainMs=performance.now()-renderBegan;
+      renderMetrics.mainDraws=(renderMetrics.mainDraws||0)+1;
+      renderMetrics.mainTotalMs=(renderMetrics.mainTotalMs||0)+renderMetrics.mainMs;
+      renderMetrics.maxMainMs=Math.max(renderMetrics.maxMainMs,renderMetrics.mainMs);
+      homeFrameDirty=false;if(homePose)lastHomePose=Float64Array.from(homePose);
+    }
+    renderMetrics.frames++;
+    // Preview liveness is independent of scene dirtiness and orbit activity.
+    // One readback at a time bounds GPU work; a pending readback must not
+    // prevent the main view from painting its latest camera position.
+    if(previewDue&&!previewInFlight&&!cameraSampler.busy) {
+        const preview=previews[previewCursor%previews.length];
+        previewInFlight=preview;
+        lastCameraPreviewAt=now;
+        cameraSampler.captureAsync(preview.camera,{width:320,height:240,timestamp:sensorTimestamp,withDepth:false})
+          .then(frame=>{
+            if(viewDisposed)return;
+            if(preview.enabled) {
+              preview.imageData=paintCameraFrame(preview.context,frame,preview.imageData||undefined);
+              preview.frames++;preview.lastFrameAt=performance.now();preview.timestamp=frame.timestamp;
+            }
+            renderMetrics.previewMs=frame.renderMs;
+            renderMetrics.maxPreviewMs=Math.max(renderMetrics.maxPreviewMs,frame.renderMs);
+          })
+          .catch(error=>{if(!viewDisposed)renderMetrics.previewError=error.message;})
+          .finally(()=>{previewInFlight=null;});
+        previewCursor=(previewCursor+1)%previews.length;
     }
   }
 
@@ -1256,9 +1337,10 @@ export function createSceneView(host, options = {}) {
   }
 
   function setCameraPreviewEnabled(key, enabled) {
+    homeFrameDirty=true;
     const preview = cameraPreviews.find(item => item.key === key);
     if (!preview) return false;
-    preview.enabled = Boolean(enabled && preview.cameraId >= 0 && preview.renderer);
+    preview.enabled = Boolean(enabled && preview.cameraId >= 0 && preview.context);
     if (preview.enabled) lastCameraPreviewAt = -Infinity;
     return preview.enabled;
   }
@@ -1480,6 +1562,8 @@ export function createSceneView(host, options = {}) {
   }
 
   function clear() {
+    const geometries=new Set([...meshGeometries.values(),...meshes.map(mesh=>mesh.geometry),
+      ...[...displayLods.values()].filter(Boolean).map(lod=>lod.geometry)]);
     labProps.forEach((prop) => {
       scene.remove(prop);
       disposeLabProp(prop);
@@ -1502,8 +1586,9 @@ export function createSceneView(host, options = {}) {
     groundMeshes.length = 0;
     parts.length = 0;
     partMeshes.clear();
-    meshGeometries.forEach((geometry) => geometry.dispose());
+    geometries.forEach(geometry=>geometry.dispose());
     meshGeometries.clear();
+    displayLods.clear();lodMeshes.length=0;
   }
 
   function updatePointerRay(clientX, clientY) {
@@ -1678,6 +1763,40 @@ export function createSceneView(host, options = {}) {
     },
     sync,
     render,
+    setSceneAppearance({exposure=1.02,lightScale=1,cupColor=null,cupRoughness=null,cupWallStyle='rounded'}={}) {
+      if(!Number.isFinite(exposure)||exposure<.25||exposure>2||!Number.isFinite(lightScale)||lightScale<.1||lightScale>3)throw new RangeError('Invalid scene lighting');
+      renderer.toneMappingExposure=exposure;
+      scene.traverse(object=>{if(object.isLight) {object.userData.originalIntensity??=object.intensity;object.intensity=object.userData.originalIntensity*lightScale;}});
+      const cup=labProps.find(object=>object.name==='cup_visual');
+      if(cup)setCupAppearance(cup,{color:cupColor,roughness:cupRoughness,wallStyle:cupWallStyle});
+      homeFrameDirty=true;geometryMetrics=null;
+    },
+    captureWorkspaceRgbd(options = {}) {
+      const camera = new THREE.PerspectiveCamera(45,4/3,.03,8);
+      camera.up.set(0,0,1);camera.position.set(.80,.08,1.40);camera.lookAt(.30,.02,.91);camera.updateMatrixWorld(true);
+      return options.asyncReadback?cameraSampler.captureAsync(camera,{...options,timestamp:sensorTimestamp})
+        :cameraSampler.capture(camera,{...options,timestamp:sensorTimestamp});
+    },
+    captureCamera(key = 'overhead', options = {}) {
+      const preview = cameraPreviews.find(item => item.key === key);
+      if (!preview || preview.cameraId < 0) throw new Error(`Camera unavailable: ${key}`);
+      if(options.asyncReadback)return cameraSampler.captureAsync(preview.camera,{...options,timestamp:sensorTimestamp});
+      const frame = cameraSampler.capture(preview.camera, { ...options, timestamp: sensorTimestamp });
+      renderMetrics.sensorMs = frame.renderMs;
+      return frame;
+    },
+    getRenderMetrics() { geometryMetrics??=sceneGeometryMetrics(scene,[...meshGeometries.values(),
+      ...[...displayLods.values()].filter(Boolean).map(lod=>lod.geometry)]);return { ...renderMetrics,...renderProfiler.state(),
+      camera:{position:camera.position.toArray(),target:controls.target.toArray(),
+        azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle(),distance:controls.getDistance()},
+      previews:Object.fromEntries(cameraPreviews.filter(preview=>preview.canvas).map(preview=>[preview.key,
+        {enabled:preview.enabled,frames:preview.frames,ageMs:preview.lastFrameAt===null?null:performance.now()-preview.lastFrameAt,
+          timestamp:preview.timestamp,pending:previewInFlight===preview}])),
+      geometry:geometryMetrics,lod:{meshes:lodMeshes.length,originalTriangles:lodMeshes.reduce((sum,mesh)=>sum+mesh.userData.displayLod.originalTriangles,0),
+        reducedTriangles:lodMeshes.reduce((sum,mesh)=>sum+mesh.userData.displayLod.reducedTriangles,0),
+        maxDisplacement:Math.max(0,...lodMeshes.map(mesh=>mesh.userData.displayLod.maxDisplacement))},
+      wasmMemoryBytes,sensor:cameraSampler.statistics(),jsHeapBytes:globalThis.performance?.memory?.usedJSHeapSize??null,
+      geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }; },
     resize,
     projectWorld,
     intersectPlane,
@@ -1687,6 +1806,7 @@ export function createSceneView(host, options = {}) {
     setNavigationPath,
     setCameraMode,
     setViewPreset(position, target) {
+      homeFrameDirty=true;
       controls.enableDamping = false;
       controls.update();
       camera.position.set(...position);
@@ -1741,6 +1861,7 @@ export function createSceneView(host, options = {}) {
     setContactVisuals,
     camera,
     dispose() {
+      viewDisposed=true;
       campusEnvironment?.dispose();
       observer.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPickPointerDown);
@@ -1766,12 +1887,14 @@ export function createSceneView(host, options = {}) {
       navigationGoalCheck.material.dispose();
       navigationPathGeometry.dispose();
       navigationPath.material.dispose();
-      cameraPreviews.forEach(preview => preview.renderer?.dispose());
+      cameraSampler.dispose();
+      renderProfiler.dispose();
       if (gridTexture) { gridTexture.dispose(); gridTexture = null; }
       backdropTexture.dispose();
       homeWood?.dispose();
       homeFloor?.dispose();
       environmentTexture.dispose();
+      controls.removeEventListener('change', onCameraChange);
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();

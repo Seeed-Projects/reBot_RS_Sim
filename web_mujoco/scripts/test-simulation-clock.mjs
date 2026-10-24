@@ -15,6 +15,15 @@ for (const fps of [5, 15, 30, 60, 120, 144]) {
   assert.equal(steps, 3000, `${fps} FPS must advance three seconds, not ${steps / 1000}`);
 }
 const clock = createSimulationClock(0.001);
+for (const speed of [1, 2, 4]) for (const fps of [5, 30, 60, 144]) {
+  const scaled = createSimulationClock(.001); scaled.reset(0);
+  let steps = 0;
+  for (let frame = 1; frame <= fps * 3; frame++) steps += scaled.steps(frame * 1000 / fps, { speed });
+  assert.equal(steps, 3000 * speed, `Dual-arm ${speed}x speed must not depend on ${fps} FPS`);
+  assert.equal(scaled.steps(10000, { speed, paused: true }), 0);
+  assert.equal(scaled.steps(10010, { speed }), 10 * speed, 'Resume without replaying paused time');
+}
+assert.throws(() => clock.steps(0, { speed: Infinity }), RangeError);
 clock.reset(0);
 assert.equal(clock.steps(1), 1);
 assert.equal(clock.steps(10001), 250, 'Long stalls must have a bounded catch-up');

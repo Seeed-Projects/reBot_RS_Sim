@@ -62,12 +62,33 @@ function spool() {
   return group;
 }
 
+function cupBodyGeometry(style='rounded') {
+  const profile = style==='straight'
+    ? [[0,-.042],[.031,-.042],[.035,-.040],[.036,-.034],[.036,.025],[.037,.038],[.0365,.042],[.033,.042],[.032,.038],[.031,-.032],[.028,-.035],[0,-.035]]
+    : [[0,-.042],[.027,-.042],[.031,-.040],[.033,-.034],[.036,.025],[.037,.038],[.0365,.042],[.033,.042],[.032,.038],[.031,-.032],[.028,-.035],[0,-.035]];
+  return new THREE.LatheGeometry(profile.map(([r,z])=>new THREE.Vector2(r,z)),64).rotateX(Math.PI/2);
+}
+
+export function setCupAppearance(group,{color=null,roughness=null,wallStyle='rounded'}={}) {
+  if(!['rounded','straight'].includes(wallStyle))throw new RangeError('Unknown calibrated cup wall style');
+  group.traverse(object=>{
+    if(!object.isMesh)return;
+    const material=object.material;
+    material.userData.originalColor??=material.color.clone();
+    material.userData.originalRoughness??=material.roughness;
+    material.color.copy(color===null?material.userData.originalColor:new THREE.Color(color));
+    material.roughness=roughness??material.userData.originalRoughness;
+    if(object.name==='cup_body'&&object.userData.wallStyle!==wallStyle) {
+      object.geometry.dispose();object.geometry=cupBodyGeometry(wallStyle);object.userData.wallStyle=wallStyle;
+    }
+  });
+}
+
 function cup() {
   const group = new THREE.Group();
   const material = new THREE.MeshPhysicalMaterial({ color: 0xa9c5b5, roughness: .23, clearcoat: .6, clearcoatRoughness: .17 });
   // Closed cross-section: exterior, rolled lip, interior and a solid bottom.
-  const profile = [[0, -.042], [.027, -.042], [.031, -.040], [.033, -.034], [.036, .025], [.037, .038], [.0365, .042], [.033, .042], [.032, .038], [.031, -.032], [.028, -.035], [0, -.035]];
-  mesh(group, new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), 64).rotateX(Math.PI / 2), material);
+  const body=mesh(group,cupBodyGeometry(),material);body.name='cup_body';body.userData.wallStyle='rounded';
   // Open C curve: both ends stop in the outer wall, never cross the cup cavity.
   const handlePath = new THREE.CubicBezierCurve3(new THREE.Vector3(0, -.036, .026),
     new THREE.Vector3(0, -.086, .047), new THREE.Vector3(0, -.086, -.047), new THREE.Vector3(0, -.036, -.026));

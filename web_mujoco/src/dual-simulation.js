@@ -6,6 +6,8 @@ import { createCupSpoonCooperation } from './cup-spoon-cooperation.js';
 import { createPosePlanner } from './pose-ik.js';
 import { ARM_JOINTS } from './kinematics.js';
 import { Quaternion, Vector3 } from 'three';
+import { createCooperationLayout, validateLayoutSeed } from './cooperation-layout.js';
+import { COOPERATIVE_TASKS } from './cooperative-actions.js';
 
 export const TABLETOP_TASKS = Object.freeze([
   { id: 'egg', label: '鸡蛋', arm: 'left', destination: '托盘', color: '#ebd0a0', slot: -.05 },
@@ -38,7 +40,7 @@ function tabletopIk(mujoco, model, data, joints, ik) {
 
 // Both controllers share one MjData. Apply both sets of motor torques before
 // exactly one mj_step; stepping each controller separately would double time.
-export function createDualSimulation(mujoco, model, data) {
+export function createDualSimulation(mujoco, model, data, {graspMode='assisted'}={}) {
   const arms = {};
   let running = false;
   let paused = false;
@@ -46,6 +48,10 @@ export function createDualSimulation(mujoco, model, data) {
   let error = '';
   let activeTasks = new Set();
   let mode = 'sorting';
+  let controlStep = 0;
+  let layoutSeed = null, layout = null;
+  const performanceMetrics={physicsSteps:0,physicsMs:0,maxBatchMs:0};
+  const cooperationLayout = createCooperationLayout(mujoco, model, data);
   for (const [side, y] of [['left', -.34], ['right', .34]]) {
     const joints = bindJoints(mujoco, model, `${side}_`);
     const physics = createPhysicsController(mujoco, model, data, joints);
@@ -59,19 +65,23 @@ export function createDualSimulation(mujoco, model, data) {
     });
     arms[side] = { joints, physics, ik, demo, queue: [] };
   }
-  const cooperation = createCupSpoonCooperation({ mujoco, model, data, arms });
+  const cooperation = createCupSpoonCooperation({ mujoco, model, data, arms, graspMode });
+  const initialSolver={cone:model.opt.cone,impratio:model.opt.impratio};
 
   function state() {
     return {
       running, paused, error, completed: [...completed], time: data.time,
       activeTasks: [...activeTasks],
-      mode, cooperation: cooperation.state(),
+      mode, layout, performance:{...performanceMetrics}, cooperation: cooperation.state(),
       arms: Object.fromEntries(Object.entries(arms).map(([side, arm]) => [side, arm.demo.state()]))
     };
   }
 
-  function reset() {
+  function reset({ seed = null } = {}) {
+    validateLayoutSeed(seed);
     running = paused = false;
+    controlStep = 0;
+    model.opt.cone=initialSolver.cone;model.opt.impratio=initialSolver.impratio;
     completed = new Set();
     activeTasks = new Set();
     error = '';
@@ -84,7 +94,8 @@ export function createDualSimulation(mujoco, model, data) {
       arm.physics.setTargets(READY);
       applyKinematicPose(mujoco, model, data, arm.joints, READY);
     }
-    mujoco.mj_forward(model, data);
+    layoutSeed = seed;
+    layout = cooperationLayout.apply(seed);
   }
 
   function start(ids = TABLETOP_TASKS.map((task) => task.id)) {
@@ -132,23 +143,36 @@ export function createDualSimulation(mujoco, model, data) {
 
   function step(count) {
     if (paused) return;
+    const began=performance.now();
     for (let i = 0; i < count; i++) {
-      if (i % 10 === 0) update();
+      if (controlStep++ % 10 === 0) update();
       arms.left.physics.applyCtrl();
       arms.right.physics.applyCtrl();
       mujoco.mj_step(model, data);
     }
+    const ms=performance.now()-began;performanceMetrics.physicsSteps+=count;performanceMetrics.physicsMs+=ms;performanceMetrics.maxBatchMs=Math.max(performanceMetrics.maxBatchMs,ms);
   }
 
   reset();
-  return { state, reset, start, step, arms,
-    startCooperation() {
+  return { state, reset, start, step, arms, dispose:cooperation.dispose, setObservationProvider:cooperation.setObservationProvider,
+    setCooperationLayout(seed) {
+      validateLayoutSeed(seed);
       if (running) return false;
-      reset();
+      reset({ seed }); step(250); mode = 'cooperation';
+      return true;
+    },
+    startCooperation({ seed = layoutSeed, resetScene = true,task='spoon-in-cup' } = {}) {
+      if (running) return false;
+      if(!COOPERATIVE_TASKS[task])throw new RangeError('Unknown cooperative task');
+      validateLayoutSeed(seed);
+      if (resetScene) reset({ seed });
       // Settle the free objects onto their supports before planning the grasp.
-      step(250);
+      if(graspMode==='contact') {
+        model.opt.cone=mujoco.mjtCone.mjCONE_ELLIPTIC.value;model.opt.impratio=10;
+      }
+      step(graspMode==='contact'?2500:250);
       mode = 'cooperation';
-      running = cooperation.start();
+      running = cooperation.start({task});
       error = cooperation.state().error;
       return running;
     },

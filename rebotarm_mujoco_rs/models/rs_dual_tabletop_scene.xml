@@ -322,9 +322,6 @@
       <geom name="basket_wall_y_0.49" type="box" pos=".40 0.49 .868" size=".12 .004 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
       <geom name="basket_wall_x_0.275" type="box" pos="0.275 .34 .868" size=".004 .15 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
       <geom name="basket_wall_x_0.525" type="box" pos="0.525 .34 .868" size=".004 .15 .028" material="basket" rgba=".53 .37 .20 0" group="3" />
-      <geom name="utensil_rest_0.326" type="box" pos="0.326 .085 0.8827499999999999" size=".006 .018 0.04275000000000001" material="oak" />
-      <geom name="utensil_rest_0.4314" type="box" pos="0.4314 .085 0.85175" size=".006 .018 0.011750000000000038" material="oak" />
-      <geom name="utensil_rest_stop" type="box" pos=".452 .085 .854" size=".003 .018 .014" material="oak" friction="2 .02 .002" />
     </body>
     <body name="egg" pos=".21 -.46 .864">
       <freejoint name="egg_free" />
@@ -408,6 +405,11 @@
       <geom name="spoon_handle_collision" type="box" pos=".017 0 0" size=".052 .0037 .0014" material="steel" group="3" rgba="0 0 0 0" mass=".008" friction="1.5 .02 .002" solref=".004 1" />
       <geom name="spoon_bowl_collision" type="ellipsoid" pos=".094 0 -.001" size=".020 .013 .003" material="steel" group="3" rgba="0 0 0 0" mass=".017" friction="1.5 .02 .002" solref=".004 1" />
     </body>
+    <body name="spoon_fixture" pos=".35 .085 .914" mocap="true">
+      <geom name="utensil_rest_0.326" type="box" pos="-0.024000 0 -0.031250" size=".006 .018 0.04275000000000001" material="oak" />
+      <geom name="utensil_rest_0.4314" type="box" pos="0.081400 0 -0.062250" size=".006 .018 0.011750000000000038" material="oak" />
+      <geom name="utensil_rest_stop" type="box" pos=".102 0 -.060" size=".003 .018 .014" material="oak" friction="2 .02 .002" />
+    </body>
     <geom name="plant_pot" type="cylinder" pos="-.28 -.96 .19" size=".13 .19" material="terracotta" />
     <geom name="plant_soil" type="cylinder" pos="-.28 -.96 .383" size=".118 .006" material="soil" />
     <geom name="leaf_0" type="ellipsoid" pos="-0.180 -0.960 0.560" size=".07 .035 .17" material="leaf" euler=".4 0.00 0.00" contype="0" conaffinity="0" />
@@ -441,8 +443,6 @@
     <exclude body1="right_link5" body2="right_link6" />
     <exclude body1="left_gripper_end" body2="coop_cup" />
     <exclude body1="left_gripper_coupler" body2="coop_cup" />
-    <exclude body1="left_gripper_left" body2="coop_cup" />
-    <exclude body1="left_gripper_right" body2="coop_cup" />
     <exclude body1="right_gripper_end" body2="coop_spoon" />
     <exclude body1="right_gripper_coupler" body2="coop_spoon" />
   </contact>

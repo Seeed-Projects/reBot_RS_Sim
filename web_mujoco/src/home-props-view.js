@@ -55,8 +55,8 @@ export function createWoodTexture(floor = false) {
   return texture;
 }
 
-export function createHomeProp(name) {
-  if (name === 'home_room_anchor') return createHomeRoom(createWoodTexture());
+export function createHomeProp(name,options={}) {
+  if (name === 'home_room_anchor') return createHomeRoom(createWoodTexture(),options);
   const tabletop = createTabletopProp(name);
   if (tabletop) return tabletop;
   if (name !== 'basket_bottom') return null;

@@ -43,13 +43,13 @@ function isCacheable(requestUrl) {
 async function pruneOldModelFile(cache, url) {
   // Each file has its own content hash. Updating XML must not evict meshes.
   if ((!url.pathname.includes('/models/') && !url.pathname.includes('/environments/')) || !url.searchParams.has('v')) return;
-  const rawPath = url.pathname.endsWith('.gzbin') ? url.pathname.slice(0, -6) : null;
+  const sourcePath=value=>value.replace(/(?:\.stlp1)?\.gzbin$/,'');
   const requests = await cache.keys();
   await Promise.all(requests.map((request) => {
     const cached = new URL(request.url);
     if (cached.origin !== url.origin) return false;
-    const outdated = cached.pathname === url.pathname && cached.href !== url.href;
-    return outdated || cached.pathname === rawPath ? cache.delete(request) : false;
+    const outdated=sourcePath(cached.pathname)===sourcePath(url.pathname)&&cached.href!==url.href;
+    return outdated ? cache.delete(request) : false;
   }));
 }
 

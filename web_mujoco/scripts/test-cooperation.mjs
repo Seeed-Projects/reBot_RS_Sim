@@ -68,4 +68,15 @@ sim.reset();
 assert.equal(sim.state().cooperation.complete, false);
 assert.equal(sim.state().cooperation.cupHeld, false);
 console.log('Cup/spoon: synchronized grasp, lift, insertion, physical release, settling and reset passed');
-data.delete(); model.delete(); vfs.delete();
+// Inject an obstacle after a valid plan and verify the live runtime stop.
+assert(sim.startCooperation());
+const obstructingJoint=mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_JOINT.value,'egg_free');
+const armBody=mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_BODY.value,'left_link3');
+const armGeom=Array.from(model.geom_bodyid).findIndex((body,index)=>body===armBody&&model.geom_contype[index]);
+assert(armGeom>=0);
+data.qpos.set(data.geom_xpos.subarray(armGeom*3,armGeom*3+3),model.jnt_qposadr[obstructingJoint]);
+mujoco.mj_forward(model,data);sim.step(1);
+assert.equal(sim.state().error,'unexpected-collision');
+assert.equal(sim.state().running,false);assert.equal(sim.state().cooperation.complete,false);
+console.log('Unexpected physical collision stops the live controller and reports the body pair');
+sim.dispose();data.delete(); model.delete(); vfs.delete();

@@ -4,6 +4,7 @@ import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
+import {packStl} from './scripts/pack-stl.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const modelsSrc = path.resolve(root, '../rebotarm_mujoco_rs/models');
@@ -30,6 +31,11 @@ function hashModelFiles() {
 }
 
 const modelVersions = hashModelFiles();
+const packedMeshFiles = Object.fromEntries(Object.keys(modelVersions).filter(name=>{
+  if(!/\.stl$/i.test(name))return false;
+  const bytes=readFileSync(path.join(modelsSrcAbs,name));
+  return bytes.length>=84&&bytes.readUInt32LE(80)>0&&84+50*bytes.readUInt32LE(80)===bytes.length;
+}).map(name=>[name,true]));
 const devGzipCache = new Map();
 
 function isMeshFile(filePath) {
@@ -44,6 +50,10 @@ function writeCompressedMeshes(sourceRoot, destinationRoot) {
       const destination = path.join(destinationRoot, `${relative}.gzbin`);
       mkdirSync(path.dirname(destination), { recursive: true });
       writeFileSync(destination, gzipSync(readFileSync(sourcePath), { level: 9 }));
+      if(packedMeshFiles[relative.replaceAll(path.sep,'/')]) {
+        const packed=packStl(readFileSync(sourcePath));
+        writeFileSync(path.join(destinationRoot,`${relative}.stlp1.gzbin`),gzipSync(packed,{level:9}));
+      }
     });
 }
 
@@ -76,6 +86,7 @@ export default defineConfig(({ command, mode }) => ({
   base: pagesBase(),
   define: {
     __MODEL_VERSIONS__: JSON.stringify(modelVersions),
+    __PACKED_MESH_FILES__: JSON.stringify(packedMeshFiles),
     __MUJOCO_VERSION__: JSON.stringify(mujocoVersion)
   },
   optimizeDeps: {

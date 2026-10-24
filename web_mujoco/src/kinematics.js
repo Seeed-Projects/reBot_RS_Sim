@@ -1,3 +1,4 @@
+import { CONTROL_CONFIG } from './control-config.js';
 export const ARM_JOINTS = [
   { name: 'joint1', label: 'J1', min: -2.8, max: 2.8, home: 0, unit: 'rad', color: '#5ee0ff', column: 'left' },
   { name: 'joint2', label: 'J2', min: 0, max: 3.14, home: 0, unit: 'rad', color: '#8fd7c1', column: 'left' },
@@ -5,7 +6,7 @@ export const ARM_JOINTS = [
   { name: 'joint4', label: 'J4', min: -1.57, max: 1.57, home: 0, unit: 'rad', color: '#ff9f5a', column: 'right' },
   { name: 'joint5', label: 'J5', min: -1.57, max: 1.57, home: 0, unit: 'rad', color: '#ff7ab6', column: 'right' },
   { name: 'joint6', label: 'J6', min: -3.14, max: 3.14, home: 0, unit: 'rad', color: '#7aa2ff', column: 'right' }
-];
+].map((joint,index)=>({...joint,min:CONTROL_CONFIG.jointLimits[index][0],max:CONTROL_CONFIG.jointLimits[index][1]}));
 
 export const GRIPPER_JOINTS = [
   { name: 'joint7', label: '夹爪', min: 0, max: 0.05, home: 0, unit: 'm', color: '#d4b3ff', column: 'right' },

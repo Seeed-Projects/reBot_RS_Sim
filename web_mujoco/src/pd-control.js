@@ -1,14 +1,15 @@
 import { ARM_JOINTS, homePose } from './kinematics.js';
+import { CONTROL_CONFIG } from './control-config.js';
 
-/** Gains and limits copied from rebotarm_mujoco_rs/mujoco_sync.py. */
-export const ARM_KP = [80, 100, 100, 35, 25, 18];
-export const ARM_KD = [8, 10, 10, 4, 3, 2.5];
-export const ARM_TAU_LIMIT = [36, 36, 36, 14, 14, 14];
-export const GRIPPER_KP = 300;
-export const GRIPPER_KD = 40;
-export const GRIPPER_TAU_LIMIT = 150;
+/** Shared SI defaults, with the validated browser gripper profile. */
+export const ARM_KP = CONTROL_CONFIG.arm.kp;
+export const ARM_KD = CONTROL_CONFIG.arm.kd;
+export const ARM_TAU_LIMIT = CONTROL_CONFIG.arm.tauLimit;
+export const GRIPPER_KP = CONTROL_CONFIG.gripperProfiles.web.kp;
+export const GRIPPER_KD = CONTROL_CONFIG.gripperProfiles.web.kd;
+export const GRIPPER_TAU_LIMIT = CONTROL_CONFIG.gripperProfiles.web.tauLimit;
 
-/** Display ~60 Hz with 4 physics steps (timestep 0.001 → ~240 Hz). */
+/** Default for explicit manual stepping; live pages use the wall-time clock. */
 export const STEPS_PER_FRAME = 4;
 
 function clip(value, min, max) {
@@ -53,6 +54,18 @@ export function createPhysicsController(
   };
 
   const targets = homePose(joints);
+  let gripperProfile=CONTROL_CONFIG.gripperProfiles.web;
+  let gripperCommand=null,gripperControlAt=null,preloadAt=null,preload=0;
+
+  function setGripperProfile(name='web') {
+    const profile=CONTROL_CONFIG.gripperProfiles[name];
+    if(!profile)throw new RangeError(`Unknown gripper profile: ${name}`);
+    gripperProfile=profile;gripperCommand=null;gripperControlAt=preloadAt=null;preload=profile.preload||0;
+  }
+  function setGripperPreload(value) {
+    if(!Number.isFinite(value)||value<0||value>(gripperProfile.maxPreload||0))throw new RangeError('Invalid gripper preload');
+    preload=value;
+  }
 
   function setTarget(name, value) {
     const joint = joints.byName[name];
@@ -77,13 +90,22 @@ export function createPhysicsController(
       const tau = bias + joint.kp * (targets[joint.name] - q) - joint.kd * qd;
       data.ctrl[joint.actuatorId] = clip(tau, -joint.tauLimit, joint.tauLimit);
     }
-    const gripperTau =
-      GRIPPER_KP * (targets.joint7 - data.qpos[gripper.qposadr]) -
-      GRIPPER_KD * data.qvel[gripper.dofadr];
+    const position=data.qpos[gripper.qposadr];
+    gripperCommand??=position;
+    const elapsed=gripperControlAt===null?0:Math.max(0,data.time-gripperControlAt);
+    gripperControlAt=data.time;
+    if(gripperProfile.closingRate) {
+      const delta=targets.joint7-gripperCommand,rate=delta<0?gripperProfile.closingRate:gripperProfile.openingRate;
+      gripperCommand+=clip(delta,-rate*elapsed,rate*elapsed);
+    } else gripperCommand=targets.joint7;
+    if(preload&&targets.joint7<gripperProfile.preloadWidth&&position<gripperProfile.preloadWidth&&gripperCommand<gripperProfile.preloadWidth)preloadAt??=data.time;
+    else preloadAt=null;
+    const closingForce=preloadAt===null?0:preload*Math.min(1,(data.time-preloadAt)/gripperProfile.preloadRampSeconds);
+    const gripperTau =gripperProfile.kp*(gripperCommand-position)-gripperProfile.kd*data.qvel[gripper.dofadr]-closingForce;
     data.ctrl[gripper.actuatorId] = clip(
       gripperTau,
-      -GRIPPER_TAU_LIMIT,
-      GRIPPER_TAU_LIMIT
+      -gripperProfile.tauLimit,
+      gripperProfile.tauLimit
     );
   }
 
@@ -99,6 +121,7 @@ export function createPhysicsController(
   function reset() {
     mujoco.mj_resetData(model, data);
     Object.assign(targets, homePose(joints));
+    setGripperProfile();
     mujoco.mj_forward(model, data);
   }
 
@@ -117,7 +140,8 @@ export function createPhysicsController(
       position: data.qpos[gripper.qposadr],
       error: targets.joint7 - data.qpos[gripper.qposadr],
       torque: data.qfrc_actuator?.[gripper.dofadr] ?? data.ctrl[gripper.actuatorId],
-      torqueLimit: GRIPPER_TAU_LIMIT
+      torqueLimit: gripperProfile.tauLimit,
+      command:gripperCommand,preload
     });
     const rmsError = Math.sqrt(
       samples.reduce((sum, sample) => sum + sample.error * sample.error, 0) / samples.length
@@ -125,5 +149,5 @@ export function createPhysicsController(
     return { joints: samples, rmsError };
   }
 
-  return { targets, setTarget, setTargets, applyCtrl, step, reset, telemetry };
+  return { targets, setTarget, setTargets, setGripperProfile,setGripperPreload,applyCtrl, step, reset, telemetry };
 }

@@ -16,19 +16,12 @@ from rebotarm_msgs.msg import ArmStatus, JointMotorState, JointPosVelCmd
 from rebotarm_msgs.srv import GripperCommand, SetGripper
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger
+from .control_config import CONTROL_CONFIG, JOINT_LIMITS as _JOINT_LIMITS
 
 
 _ARM_JOINTS = tuple(f"joint{index}" for index in range(1, 7))
-_JOINT_LIMITS = (
-    (-2.8, 2.8),
-    (0.0, 3.14),
-    (0.0, 3.14),
-    (-1.57, 1.57),
-    (-1.57, 1.57),
-    (-3.14, 3.14),
-)
-_GRIPPER_MOTOR_OPEN_RAD = 5.0
-_GRIPPER_VISUAL_OPEN_M = 0.045
+_GRIPPER_MOTOR_OPEN_RAD = CONTROL_CONFIG["gripper"]["motorOpenRad"]
+_GRIPPER_VISUAL_OPEN_M = CONTROL_CONFIG["gripper"]["rosVisualOpen"]
 
 
 class RsDriver(Node):

@@ -26,12 +26,13 @@ from sensor_msgs.msg import Imu, JointState, LaserScan
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 from tf2_ros import TransformBroadcaster
+from .control_config import CONTROL_CONFIG
 
 
 _ARM_JOINTS = tuple(f"joint{index}" for index in range(1, 7))
-_RS_ROS_VISUAL_OPEN_M = 0.045
+_RS_ROS_VISUAL_OPEN_M = CONTROL_CONFIG["gripper"]["rosVisualOpen"]
 _LEGACY_VISUAL_OPEN_M = 0.0285
-_MUJOCO_GRIPPER_OPEN_M = 0.05
+_MUJOCO_GRIPPER_OPEN_M = CONTROL_CONFIG["gripper"]["simulationOpen"]
 _DEFAULT_MODEL_NAME = "rs_agv_scene.xml"
 _DEFAULT_OBJECTS = ("red_cube", "blue_block", "yellow_cylinder")
 _WHEEL_JOINTS = ("front_left", "front_right", "rear_left", "rear_right")
@@ -113,17 +114,17 @@ class RsMujocoSync(Node):
         self.declare_parameter("use_viewer", False)
         self.declare_parameter("object_names", list(_DEFAULT_OBJECTS))
         self.declare_parameter("object_publish_rate", 30.0)
-        self.declare_parameter("arm_kp", [80.0, 100.0, 100.0, 35.0, 25.0, 18.0])
-        self.declare_parameter("arm_kd", [8.0, 10.0, 10.0, 4.0, 3.0, 2.5])
+        self.declare_parameter("arm_kp", [float(v) for v in CONTROL_CONFIG["arm"]["kp"]])
+        self.declare_parameter("arm_kd", [float(v) for v in CONTROL_CONFIG["arm"]["kd"]])
         self.declare_parameter(
-            "arm_tau_limit", [36.0, 36.0, 36.0, 14.0, 14.0, 14.0]
+            "arm_tau_limit", [float(v) for v in CONTROL_CONFIG["arm"]["tauLimit"]]
         )
         # Match the validated DM finger dynamics.  RS drives one coupler that
         # is equality-linked to both fingers, so its force limit is the sum of
         # DM's two 32 N finger limits.
-        self.declare_parameter("gripper_kp", 1800.0)
-        self.declare_parameter("gripper_kd", 18.0)
-        self.declare_parameter("gripper_tau_limit", 64.0)
+        self.declare_parameter("gripper_kp", float(CONTROL_CONFIG["gripperProfiles"]["ros"]["kp"]))
+        self.declare_parameter("gripper_kd", float(CONTROL_CONFIG["gripperProfiles"]["ros"]["kd"]))
+        self.declare_parameter("gripper_tau_limit", float(CONTROL_CONFIG["gripperProfiles"]["ros"]["tauLimit"]))
         self.declare_parameter("enable_agv_drive", True)
         self.declare_parameter("agv_drive_mode", "velocity")
         self.declare_parameter("wheel_radius", 0.05)

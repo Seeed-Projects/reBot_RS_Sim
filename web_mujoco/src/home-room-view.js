@@ -4,7 +4,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 
 // Room furniture is built in world metres and batched by finish. Adding a
 // complete room does not introduce hundreds of separate shadow draw calls.
-export function createHomeRoom(woodTexture) {
+export function createHomeRoom(woodTexture,{detail='balanced'}={}) {
+  const full=detail==='full';
   const group = new THREE.Group();
   const batches = new Map();
   function add(finish, color, geometry, position, rotation = null) {
@@ -20,33 +21,33 @@ export function createHomeRoom(woodTexture) {
     batches.get(finish).push(g);
   }
   const box = (finish, color, p, size, radius = 0) => add(finish, color,
-    radius ? new RoundedBoxGeometry(...size, 2, radius) : new THREE.BoxGeometry(...size), p);
+    radius ? new RoundedBoxGeometry(...size, full?2:1, radius) : new THREE.BoxGeometry(...size), p);
   const cylinder = (finish, color, p, radius, height, top = radius) => add(finish, color,
-    new THREE.CylinderGeometry(top, radius, height, 24).rotateX(Math.PI / 2), p);
+    new THREE.CylinderGeometry(top, radius, height, full?24:16).rotateX(Math.PI / 2), p);
   const sphere = (finish, color, p, size) => add(finish, color,
-    new THREE.SphereGeometry(1, 16, 10).scale(...size), p);
+    new THREE.SphereGeometry(1, full?16:12, full?10:8).scale(...size), p);
   function rod(finish, color, a, b, radius) {
     const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b), delta = end.clone().sub(start);
-    const g = new THREE.CylinderGeometry(radius * .84, radius, delta.length(), 10);
+    const g = new THREE.CylinderGeometry(radius * .84, radius, delta.length(), full?10:8);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize()));
     add(finish, color, g, start.add(end).multiplyScalar(.5).toArray());
   }
   function torus(finish, color, p, radius, tube, rotation = [0, 0, 0]) {
-    add(finish, color, new THREE.TorusGeometry(radius, tube, 8, 32), p, rotation);
+    add(finish, color, new THREE.TorusGeometry(radius, tube, full?8:6, full?32:24), p, rotation);
   }
   function plant(x, y, z, scale = 1) {
     // An open vessel avoids a solid top cap overlapping the soil at z + .09.
     const profile = [[0, 0], [.043, 0], [.045, .004], [.052, .087],
       [.052, .090], [.047, .090], [.046, .083], [.040, .008], [0, .008]];
     const pot = new THREE.LatheGeometry(profile.map(([r, h]) =>
-      new THREE.Vector2(r * scale, h * scale)), 40).rotateX(Math.PI / 2);
+      new THREE.Vector2(r * scale, h * scale)), full?40:24).rotateX(Math.PI / 2);
     add('ceramic', 0xd1c3a4, pot, [x, y, z]);
     cylinder('matte', 0x403426, [x, y, z + .081 * scale], .0455 * scale, .004 * scale);
     for (let i = 0; i < 9; i++) {
       const a = i * 2.4;
       const end = [x + Math.cos(a) * .05 * scale, y + Math.sin(a) * .05 * scale, z + (.17 + i % 3 * .025) * scale];
       rod('matte', 0x4f6541, [x, y, z + .09 * scale], end, .002 * scale);
-      const geometry = new THREE.SphereGeometry(1, 12, 8).scale(.024 * scale, .012 * scale, .052 * scale);
+      const geometry = new THREE.SphereGeometry(1, full?12:10, full?8:6).scale(.024 * scale, .012 * scale, .052 * scale);
       add('leaf', i % 2 ? 0x6c8953 : 0x3e633e, geometry, end, [.35 * Math.cos(a), .35 * Math.sin(a), a]);
     }
   }
@@ -119,13 +120,18 @@ export function createHomeRoom(woodTexture) {
   }
   plant(-.47, -1.86, 1.26, .85);
   cylinder('ceramic', 0x8f9f86, [-.46, -1.40, 1.34], .055, .16, .031);
-  // Gathered linen curtains frame the window rather than covering the task.
-  rod('metal', 0x807b64, [-.57, -.95, 2.00], [-.57, 1.15, 2.00], .012);
-  for (const y of [-.82, 1.02]) {
+  // Keep the folds in front of the sill's x=-.50 edge and the right panel
+  // clear of the shelf/sideboard, which start at y=.89/.90 respectively.
+  const curtainX = -.46, curtainWidth = .18;
+  rod('metal', 0x807b64, [curtainX, -.85, 2.00], [curtainX, .98, 2.00], .012);
+  for (const y of [-.80, .93]) {
+    rod('metal', 0x807b64, [-.68, y, 2.00], [curtainX, y, 2.00], .006);
+  }
+  for (const y of [-.66, .78]) {
     const points = [], indices = [], cols = 32;
     for (let row = 0; row <= 12; row++) for (let col = 0; col <= cols; col++) {
       const u = col / cols, z = .13 + row / 12 * 1.84;
-      points.push(-.55 + Math.sin(u * Math.PI * 12) * .018, y + (u - .5) * .25, z);
+      points.push(curtainX + Math.sin(u * Math.PI * 12) * .018, y + (u - .5) * curtainWidth, z);
     }
     for (let row = 0; row < 12; row++) for (let col = 0; col < cols; col++) {
       const a = row * (cols + 1) + col, b = a + cols + 1;
@@ -133,7 +139,7 @@ export function createHomeRoom(woodTexture) {
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(points, 3)); g.setIndex(indices); g.computeVertexNormals();
     add('fabric', 0xe7e0c9, g, [0, 0, 0]);
-    for (let i = 0; i < 7; i++) torus('metal', 0xa79f84, [-.55, y + (i - 3) * .035, 1.985], .018, .002, [Math.PI / 2, 0, 0]);
+    for (let i = 0; i < 7; i++) torus('metal', 0xa79f84, [curtainX, y + (i - 3) * .026, 1.985], .018, .002, [Math.PI / 2, 0, 0]);
   }
   plant(-.55, -.30, .967, .62);
   plant(-.55, .55, .967, .78);

@@ -10,8 +10,10 @@ export function createSimulationClock(timestep, { maxFrameSeconds = 0.25 } = {})
     remainder = 0;
   }
 
-  function steps(now) {
+  function steps(now, { speed = 1, paused = false } = {}) {
+    if (!(speed > 0) || !Number.isFinite(speed)) throw new RangeError('Invalid simulation speed');
     if (!Number.isFinite(now)) return 0;
+    if (paused) { reset(now); return 0; }
     if (previous === null) {
       previous = now;
       return 0;
@@ -20,7 +22,7 @@ export function createSimulationClock(timestep, { maxFrameSeconds = 0.25 } = {})
     // the clock so returning to the page never fast-forwards the vehicle.
     const elapsed = Math.min(maxFrameSeconds, Math.max(0, (now - previous) / 1000));
     previous = now;
-    remainder += elapsed;
+    remainder += elapsed * speed;
     const count = Math.floor((remainder + timestep * 1e-9) / timestep);
     remainder = Math.max(0, remainder - count * timestep);
     return count;

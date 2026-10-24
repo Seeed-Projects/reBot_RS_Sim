@@ -183,23 +183,23 @@ def build():
          group='3', rgba='0 0 0 0', mass='.008', friction='1.5 .02 .002', solref='.004 1')
     geom(spoon, 'spoon_bowl_collision', 'ellipsoid', '.094 0 -.001', '.020 .013 .003', 'steel',
          group='3', rgba='0 0 0 0', mass='.017', friction='1.5 .02 .002', solref='.004 1')
+    # Keep the fixture in its own kinematic frame: moving static table geoms
+    # after compilation would leave their compiled collision BVH out of date.
+    fixture = ET.SubElement(world, 'body', name='spoon_fixture', pos='.35 .085 .914', mocap='true')
     for x, top in [(.326, .9255), (.4314, .8635)]:
         half_height = (top - .84) / 2
-        geom(table, f'utensil_rest_{x}', 'box', f'{x} .085 {.84+half_height}',
+        geom(fixture, f'utensil_rest_{x}', 'box', f'{x-.35:.6f} 0 {.84+half_height-.914:.6f}',
              f'.006 .018 {half_height}', 'oak')
     # A small end stop keeps the inclined spoon from sliding off its two rests.
-    geom(table, 'utensil_rest_stop', 'box', '.452 .085 .854', '.003 .018 .014', 'oak', friction='2 .02 .002')
+    geom(fixture, 'utensil_rest_stop', 'box', '.102 0 -.060', '.003 .018 .014', 'oak', friction='2 .02 .002')
     for item, side in [('cup', 'left'), ('spoon', 'right')]:
         ET.SubElement(equality, 'weld', name=f'{item}_grasp', body1=f'{side}_gripper_end',
                       body2=f'coop_{item}', active='false', solref='.012 1',
                       solimp='.999 .999 .0001', torquescale='1')
-        # The guided grasp weld handles finger attachment; object/table/container
-        # contacts stay enabled throughout the demonstration.
-        # Spoon fingers keep real contacts; the weld only stabilizes the verified
-        # bilateral grasp after closure, so the jaws cannot close through it.
+        # Both utensils retain real finger contacts in all modes. The optional
+        # weld stabilizes assisted demonstrations only; contact mode never
+        # activates it. Exclude only the coarse housing/coupler proxies.
         excluded = ['gripper_end', 'gripper_coupler']
-        if item == 'cup':
-            excluded += ['gripper_left', 'gripper_right']
         for body in excluded:
             ET.SubElement(contact, 'exclude', body1=f'{side}_{body}', body2=f'coop_{item}')
     geom(world, 'plant_pot', 'cylinder', '-.28 -.96 .19', '.13 .19', 'terracotta')

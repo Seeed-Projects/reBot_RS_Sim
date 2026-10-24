@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "units": {"length":"m","angle":"rad","time":"s","torque":"N*m","force":"N"},
+  "jointLimits": [[-2.8,2.8],[0,3.14],[0,3.14],[-1.57,1.57],[-1.57,1.57],[-3.14,3.14]],
+  "arm": {"kp":[80,100,100,35,25,18],"kd":[8,10,10,4,3,2.5],"tauLimit":[36,36,36,14,14,14]},
+  "gripperProfiles": {
+    "web": {"kp":300,"kd":40,"tauLimit":150},
+    "ros": {"kp":1800,"kd":18,"tauLimit":64},
+    "cooperation": {"kp":1800,"kd":18,"tauLimit":12,"closingRate":0.04,"openingRate":0.08,"preload":2,"maxPreload":4,"preloadRampSeconds":0.5,"preloadWidth":0.006}
+  },
+  "gripper": {"simulationOpen":0.05,"rosVisualOpen":0.045,"motorOpenRad":5},
+  "cooperation": {"maxVelocity":0.8,"maxAcceleration":2,"pathSampleRadians":0.025}
+}

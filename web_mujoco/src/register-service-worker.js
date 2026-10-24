@@ -13,7 +13,7 @@ const registrationPromise =
 
 export async function persistAppShell() {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
-  const registration = (await registrationPromise) || (await navigator.serviceWorker.ready);
+  const registration = await registrationPromise;
   if (!registration?.active) return;
 
   const scopeUrl = new URL(import.meta.env.BASE_URL, location.origin);

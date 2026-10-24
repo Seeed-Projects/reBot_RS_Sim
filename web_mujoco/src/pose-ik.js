@@ -33,6 +33,8 @@ function solveLinear(matrix, rhs) {
 // or changes the other arm/object state. Only motor targets use the result.
 export function createPosePlanner(mujoco, model, data, joints, bodyId) {
   const scratch = new mujoco.MjData(model);
+  const jacp = new mujoco.DoubleBuffer(3 * model.nv), jacr = new mujoco.DoubleBuffer(3 * model.nv);
+  const statistics = { solves: 0, iterations: 0, totalMs: 0, maxMs: 0 };
   const arm = ARM_JOINTS.map((joint) => joints.byName[joint.name]);
   function pose() {
     const i = bodyId * 3, q = bodyId * 4;
@@ -42,8 +44,11 @@ export function createPosePlanner(mujoco, model, data, joints, bodyId) {
   function apply(angles) {
     for (const joint of arm) scratch.qpos[joint.qposadr] = angles[joint.name];
     mujoco.mj_kinematics(model, scratch);
+    mujoco.mj_comPos(model, scratch);
   }
   function solve(position, quaternion, seed) {
+    const began = performance.now(); statistics.solves++;
+    const finish = result => { const ms = performance.now() - began; statistics.totalMs += ms; statistics.maxMs = Math.max(statistics.maxMs, ms); return result; };
     scratch.qpos.set(data.qpos);
     const target = new Vector3(...position);
     const seeds = [seed, { ...seed, joint2: .7, joint3: .8, joint4: -.4 },
@@ -52,6 +57,7 @@ export function createPosePlanner(mujoco, model, data, joints, bodyId) {
     for (const initial of seeds) {
       let angles = { ...initial };
       for (let iteration = 0; iteration < 180; iteration++) {
+        statistics.iterations++;
         apply(angles);
         const current = pose();
         const dp = target.clone().sub(current.position).toArray();
@@ -59,15 +65,14 @@ export function createPosePlanner(mujoco, model, data, joints, bodyId) {
         const positionError = Math.hypot(...dp), rotationError = Math.hypot(...dr);
         const score = positionError + ROTATION_WEIGHT * rotationError;
         if (!best || score < best.score) best = { angles: { ...angles }, positionError, rotationError, score };
-        if (positionError < .0015 && rotationError < .025) return best;
+        if (positionError < .0006 && rotationError < .012) return finish(best);
         const error = [...dp, ...dr.map((x) => x * ROTATION_WEIGHT)];
-        const columns = arm.map((joint) => {
-          const perturbed = { ...angles, [joint.name]: angles[joint.name] + .0005 };
-          apply(perturbed);
-          const next = pose();
-          const translation = next.position.sub(current.position).multiplyScalar(2000).toArray();
-          const rotation = rotationVector(next.quaternion, current.quaternion).map((x) => x * 2000 * ROTATION_WEIGHT);
-          return [...translation, ...rotation];
+        mujoco.mj_jacBody(model, scratch, jacp, jacr, bodyId);
+        const jp = jacp.GetView(), jr = jacr.GetView();
+        const columns = arm.map(joint => {
+          const dof = model.jnt_dofadr[joint.id];
+          return [jp[dof], jp[model.nv+dof], jp[2*model.nv+dof],
+            jr[dof]*ROTATION_WEIGHT, jr[model.nv+dof]*ROTATION_WEIGHT, jr[2*model.nv+dof]*ROTATION_WEIGHT];
         });
         const dot = (a, b) => a.reduce((sum, x, i) => sum + x * b[i], 0);
         const gram = columns.map((a, i) => columns.map((b, j) => dot(a, b) + (i === j ? .000015 : 0)));
@@ -77,7 +82,7 @@ export function createPosePlanner(mujoco, model, data, joints, bodyId) {
         arm.forEach((joint, i) => { angles[joint.name] = clamp(angles[joint.name] + delta[i] * gain, joint.min, joint.max); });
       }
     }
-    return best;
+    return finish(best);
   }
-  return { solve, dispose() { scratch.delete(); } };
+  return { solve, statistics, dispose() { jacp.delete(); jacr.delete(); scratch.delete(); } };
 }

@@ -48,6 +48,10 @@
 .dual-dock.is-collapsed #dual-status { display: none; }
 .dual-dock.is-collapsed .dual-progress { margin-top: 9px; }
 .dual-mode-tabs { display: flex; gap: 5px; align-items: center; margin-bottom: 12px; }
+.dual-layout-controls { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; gap: 10px; color: #7c836d; font-size: 10px; }
+.dual-layout-controls[hidden] { display: none; }
+.dual-page #dual-layout { display: inline-flex; align-items: center; gap: 7px; padding: 5px 8px; border-color: #81896b26; background: transparent; font-size: 10px; }
+#dual-layout span { font-size: 15px; line-height: 1; }
 .dual-mode-tabs button { padding: 6px 10px; font-size: 11px; background: transparent; border-color: #81896b26; }
 .dual-mode-tabs button[aria-selected="true"] { background: #3e5438; color: #faf9ee; border-color: #3e5438; }
 #dual-grasp-mode { margin-left: auto; font-size: 9px; color: #7b826d; }

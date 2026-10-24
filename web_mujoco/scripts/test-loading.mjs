@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import {createHash} from 'node:crypto';
 import loadMujoco from '@mujoco/mujoco';
 import { compileRemoteWasm } from '../src/wasm-loader.js';
+import {packStl} from './pack-stl.mjs';
+import {gzipSync} from 'node:zlib';
 
 const originalFetch = globalThis.fetch;
-const source = (await readFile(new URL('../src/load-model.js', import.meta.url), 'utf8'))
+const source = 'const __PACKED_MESH_FILES__={"meshes/base_link.STL":true};\n'+(await readFile(new URL('../src/load-model.js', import.meta.url), 'utf8'))
   .replaceAll('import.meta.env', JSON.stringify({ BASE_URL: '/', DEV: false }))
-  .replace("'./wasm-loader.js'", JSON.stringify(new URL('../src/wasm-loader.js', import.meta.url).href));
-const { loadRsScene } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  .replace("'./wasm-loader.js'", JSON.stringify(new URL('../src/wasm-loader.js', import.meta.url).href))
+  .replace("'./model-file-store.js'", JSON.stringify(new URL('../src/model-file-store.js', import.meta.url).href))
+  .replace("'./model-source.js'", JSON.stringify(new URL('../src/model-source.js', import.meta.url).href));
+const portableSource=source.replace("'./stl-transfer.js'",JSON.stringify(new URL('../src/stl-transfer.js',import.meta.url).href));
+const { loadRsScene } = await import(`data:text/javascript;base64,${Buffer.from(portableSource).toString('base64')}`);
 
 async function checkDownloadQueue(meshSize) {
   let releaseRuntime;
@@ -67,22 +73,64 @@ try {
     signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
   });
   await assert.rejects(compileRemoteWasm('https://example.test/mujoco.wasm', 20), /aborted/);
+  globalThis.fetch=async()=>new Response(new ReadableStream({start(controller){
+    let index=0;function chunk(){controller.enqueue(emptyWasm.slice(index,index+1));index++;
+      if(index===emptyWasm.length)controller.close();else setTimeout(chunk,10);}
+    setTimeout(chunk,10);
+  }}),{headers:{'content-type':'application/wasm'}});
+  assert(await compileRemoteWasm('https://example.test/slow-but-progressing.wasm',40) instanceof WebAssembly.Module,
+    'A progressing response may exceed the inactivity timeout in total');
 
-  // Exercise the production download/VFS pipeline with both real scene trees.
+  // Exercise the production download/file-store pipeline with real scene trees.
   const mujoco = await loadMujoco();
   globalThis.fetch = async (url) => {
     const relative = new URL(url, 'https://example.test').pathname.slice('/models/'.length);
+    if(relative.endsWith('.stlp1.gzbin')) {
+      const bytes=await readFile(new URL(`../../rebotarm_mujoco_rs/models/${relative.slice(0,-12)}`,import.meta.url));
+      return new Response(gzipSync(packStl(bytes)));
+    }
     if (relative.endsWith('.gzbin')) return new Response('', { status: 404 });
     return new Response(await readFile(new URL(`../../rebotarm_mujoco_rs/models/${relative}`, import.meta.url)));
   };
   const warn = console.warn;
   console.warn = () => {}; // These requests intentionally exercise raw-mesh fallback.
   try {
-    for (const [sceneXml, expectedGeoms] of [['rs_grasp_scene.xml', 66], ['rs_agv_scene.xml', 92]]) {
-      const { model, data } = await loadRsScene(mujoco, null, { sceneXml });
-      try { assert.equal(model.ngeom, expectedGeoms); }
+    const roots=()=>mujoco.FS.readdir('/').filter(name=>name.startsWith('rebot-model-')).sort();
+    const before=roots();let reference;
+    function snapshot(model,data) {
+      const hash=createHash('sha256');
+      // Check native collision/render geometry, inertial and joint parameters,
+      // then a deterministic contact simulation. Paths differ by design.
+      for(const name of ['qpos0','body_mass','body_inertia','body_ipos','body_iquat','jnt_pos','jnt_axis','jnt_range',
+        'geom_pos','geom_quat','geom_size','geom_friction','geom_type','geom_bodyid','geom_dataid','mesh_vert','mesh_face']) {
+        const value=model[name];assert(ArrayBuffer.isView(value),name);
+        hash.update(name).update(new Uint8Array(value.buffer,value.byteOffset,value.byteLength));
+      }
+      for(let i=0;i<100;i++)mujoco.mj_step(model,data);
+      return {geometry:hash.digest('hex'),qpos:Array.from(data.qpos),qvel:Array.from(data.qvel),time:data.time};
+    }
+    for (const [sceneXml, expectedGeoms, fileBackend] of [
+      ['rs_grasp_scene.xml',66,'auto'],['rs_agv_scene.xml',92,'auto'],
+      ['rs_dual_tabletop_scene.xml',231,'auto'],['rs_dual_tabletop_scene.xml',231,'vfs']
+    ]) {
+      const { model, data, startup } = await loadRsScene(mujoco, null, { sceneXml,fileBackend });
+      try {
+        assert.equal(model.ngeom, expectedGeoms);
+        assert.equal(startup.fileBackend,fileBackend==='auto'?'memfs':'vfs');
+        assert.deepEqual(roots(),before,'Native source files must be removed after compilation');
+        if(sceneXml==='rs_dual_tabletop_scene.xml') {
+          const actual=snapshot(model,data);
+          if(reference)assert.deepEqual(actual,reference,'Bulk loading must preserve geometry and stepped physics exactly');
+          else reference=actual;
+        }
+      }
       finally { data.delete(); model.delete(); }
     }
+    const goodFetch=globalThis.fetch;
+    globalThis.fetch=async()=>new Response('<mujoco><worldbody><geom type="unknown"/></worldbody></mujoco>');
+    try {await assert.rejects(loadRsScene(mujoco),/unknown|invalid/i);}
+    finally {globalThis.fetch=goodFetch;}
+    assert.deepEqual(roots(),before,'Failed native compilation must also remove its source files');
   } finally { console.warn = warn; }
 } finally {
   globalThis.fetch = originalFetch;
@@ -144,4 +192,10 @@ listeners.fetch({
 });
 assert.equal(await (await result).text(), 'fresh', 'Embedded campus GLB must remain usable offline');
 assert(entries.has(meshA) && entries.has(meshB), 'Campus asset updates must preserve robot meshes');
-console.log('Loading regression checks passed: independent downloads, bounded buffer, WASM streaming/MIME fallback/timeout, real arm/AGV scenes, per-file cache pruning.');
+const compactA=`${base}models/meshes/a.stl.stlp1.gzbin?v=hashA`;
+context.fetch=async()=>new Response('fresh');
+listeners.fetch({request:new Request(compactA),waitUntil(promise){waits.push(promise);},respondWith(promise){result=promise;}});
+assert.equal(await (await result).text(),'fresh');await Promise.all(waits);
+assert(entries.has(compactA)&&!entries.has(meshA),'Packed transport replaces only its own older representation');
+assert(entries.has(meshB),'Changing transport must preserve unrelated meshes');
+console.log('Loading regression checks passed: bounded parallel downloads, WASM fallback/timeout, arm/AGV/dual scenes, exact VFS/MEMFS geometry and physics equivalence, native file cleanup and per-file cache pruning.');

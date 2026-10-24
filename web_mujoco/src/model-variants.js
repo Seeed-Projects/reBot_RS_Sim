@@ -10,6 +10,19 @@ export const MODEL_VARIANTS = Object.freeze({
       environment: 'home',
       position: [1.65, -1.85, 1.95],
       target: [0.24, 0, 0.83],
+      // Z-up orbit: keep the viewer in the open, front-facing part of the
+      // room. The near-vertical limit still permits the overhead preset.
+      orbit: Object.freeze({
+        minAzimuthAngle: Math.PI * 25 / 180,
+        maxAzimuthAngle: Math.PI * 105 / 180,
+        minPolarAngle: Math.PI / 120,
+        maxPolarAngle: Math.PI * 75 / 180,
+        minDistance: 1.25,
+        maxDistance: 4.8,
+        enablePan: false,
+        rotateSpeed: .65,
+        zoomSpeed: .8
+      }),
       near: 0.04,
       far: 20
     })
