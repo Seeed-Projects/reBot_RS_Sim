@@ -37,18 +37,24 @@ try {
   await page.screenshot({path:'.reports/visual-ui-initial.png',timeout:90000});
   const orbit=MODEL_VARIANTS.dual.view.orbit;
   const cameraState=()=>page.evaluate(()=>window.rebotDual.renderMetrics().camera);
+  function checkCameraUnchanged(actual,expected) {
+    for(const key of ['position','target'])actual[key].forEach((value,i)=>assert(Math.abs(value-expected[key][i])<1e-6,'tasks must preserve the user camera'));
+  }
   function checkBounds(camera) {
     for(const [value,min,max] of [[camera.azimuth,orbit.minAzimuthAngle,orbit.maxAzimuthAngle],
       [camera.polar,orbit.minPolarAngle,orbit.maxPolarAngle],[camera.distance,orbit.minDistance,orbit.maxDistance]]) {
       assert(value>=min-1e-6&&value<=max+1e-6,JSON.stringify(camera));
     }
-    assert(camera.position[0]>0&&camera.position[1]<2.2&&camera.position[2]>camera.target[2]);
+    assert(camera.position[0]>camera.target[0]&&camera.position[2]>camera.target[2]);
   }
+  const initialCamera=await cameraState();checkBounds(initialCamera);
+  assert(initialCamera.azimuth>Math.PI*105/180,'the initial view must be on the clear side of the coffee machine, beyond the former right limit');
+  assert(initialCamera.azimuth<orbit.maxAzimuthAngle,'the initial view must leave room to rotate farther right');
   for(const [id,position,target] of [
     ['dual-room',[3,-3.2,2.7],[.28,.28,.98]],
     ['dual-overhead',[.3,-.001,2.9],[.24,0,.83]],
-    ['dual-close',[1.05,-.95,1.48],[.29,.01,.94]],
-    ['dual-coffee',[1.15,-1.15,1.70],[.40,-.20,1.04]],
+    ['dual-close',[1.45,.90,1.80],[.29,.01,.94]],
+    ['dual-coffee',[1.5,.95,1.85],[.32,-.10,.98]],
     ['dual-feeding',[1.25,-.25,1.65],[.25,.42,1.00]],
     ['dual-perspective',MODEL_VARIANTS.dual.view.position,MODEL_VARIANTS.dual.view.target]
   ]) {
@@ -97,11 +103,14 @@ try {
   await page.getByRole('button',{name:'展开任务卡片',exact:true}).click({force:true});
   assert.equal(await page.locator('#dual-task-details').isVisible(),true);checks.fold=true;
   console.log('UI: fold controls passed');
+  const cameraBeforeStart=await cameraState();
   await page.locator('#dual-speed').selectOption('4');await page.locator('#dual-start').click({force:true});
   await page.waitForFunction(()=>{const s=window.rebotDual.state();return s.running||Boolean(s.error);},null,{timeout:observationTimeout});
   await page.waitForFunction(()=>{const s=window.rebotDual.state();return Boolean(s.error)||!s.cooperation.vision.waiting&&s.cooperation.phase==='approach';},null,{timeout:observationTimeout});
   const started=await page.evaluate(()=>window.rebotDual.state());
   assert.equal(started.error,'',JSON.stringify(started.cooperation.failure));
+  assert.equal(await page.locator('#dual-perspective').getAttribute('aria-pressed'),'true');
+  checkCameraUnchanged(await cameraState(),cameraBeforeStart);
   await page.locator('#dual-pause').click({force:true});
   console.log('UI: task started and paused');
   const paused=await page.evaluate(()=>window.rebotDual.state().time);await page.waitForTimeout(600);
@@ -138,6 +147,8 @@ try {
   await page.locator('#dual-task-select').selectOption('coffee-feeding');
   assert.equal(await page.locator('#dual-grasp-mode').textContent(),'辅助夹持演示');
   assert.equal(await page.locator('#dual-layout-controls').isVisible(),false);
+  await page.locator('#dual-close').click();
+  const cameraBeforeCoffee=await cameraState();
   await page.locator('#dual-speed').selectOption('4');
   await page.locator('#dual-start').click({force:true});
   await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:taskTimeout});
@@ -146,6 +157,8 @@ try {
   assert.equal(checks.coffee.task,'coffee-feeding');assert.equal(checks.coffee.graspMode,'assisted-weld');
   assert.equal(checks.coffee.coffeeFill,1);assert.equal(checks.coffee.fed,true);
   assert(checks.coffee.stirringTravel>.03);assert(checks.coffee.minimumMouthDistance<.015);
+  assert.equal(await page.locator('#dual-close').getAttribute('aria-pressed'),'true');
+  checkCameraUnchanged(await cameraState(),cameraBeforeCoffee);
   await page.screenshot({path:'.reports/visual-ui-coffee.png'});
   await page.locator('#dual-reset').click();
   assert.equal(await page.evaluate(()=>window.rebotDual.state().cooperation.coffeeFill || 0),0);

@@ -86,7 +86,6 @@ let cooperativeTask='spoon-in-cup';
 let planning = false;
 let nextLayoutSeed = 1;
 let simulationClock = null;
-let previousCoopPhase = '';
 
 function renderTaskMode() {
   const coop = taskMode === 'cooperation';
@@ -133,8 +132,6 @@ function renderState() {
   const collaboration = state.cooperation;
   const coffee = cooperativeTask === 'coffee-feeding';
   const phases = coffee ? COFFEE_PHASES : COOP_PHASES;
-  if (coop && coffee && state.running && collaboration.phase === 'feed-approach' && previousCoopPhase !== 'feed-approach') selectView('dual-feeding');
-  previousCoopPhase = collaboration.phase;
   const count = state.completed.length;
   $('dual-count').textContent = state.error ? (coop ? '协作未完成' : '整理未完成') : coop ? collaboration.complete ? '协作完成 ✓' : state.running ? state.paused ? '已暂停' : '双臂同步中' : '准备就绪' : `${count} / 4 完成`;
   const seconds = Math.floor(state.time);
@@ -208,7 +205,7 @@ $('dual-start').addEventListener('click', () => {
   if (taskMode === 'cooperation') {
     planning = true; renderState();
     setTimeout(() => {
-      try { simulation.startCooperation({task:cooperativeTask}); selectView(cooperativeTask === 'coffee-feeding' ? 'dual-coffee' : 'dual-close'); }
+      try { simulation.startCooperation({task:cooperativeTask}); }
       finally { planning = false; simulationClock?.reset(); renderState(); }
     }, 50);
   } else { simulation.start(selected === 'all' ? undefined : [selected]); renderState(); }
@@ -236,10 +233,10 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'KeyR') reset();
 });
 const views = {
-  'dual-coffee': [[1.15, -1.15, 1.70], [.40, -.20, 1.04]],
+  'dual-coffee': [[1.5, .95, 1.85], [.32, -.10, .98]],
   'dual-feeding': [[1.25, -.25, 1.65], [.25, .42, 1.00]],
-  'dual-perspective': [MODEL_VARIANTS.dual.view.position, [.24, 0, .83]],
-  'dual-close': [[1.05, -.95, 1.48], [.29, .01, .94]],
+  'dual-perspective': [MODEL_VARIANTS.dual.view.position, MODEL_VARIANTS.dual.view.target],
+  'dual-close': [[1.45, .90, 1.80], [.29, .01, .94]],
   'dual-room': [[3.0, -3.2, 2.7], [.28, .28, .98]],
   'dual-overhead': [[.3, -.001, 2.9], [.24, 0, .83]]
 };

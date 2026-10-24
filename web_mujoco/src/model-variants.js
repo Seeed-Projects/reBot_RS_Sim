@@ -8,13 +8,13 @@ export const MODEL_VARIANTS = Object.freeze({
     hasAgv: false,
     view: Object.freeze({
       environment: 'home',
-      position: [1.65, -1.85, 1.95],
+      position: [1.8, 1.25, 1.95],
       target: [0.24, 0, 0.83],
-      // Z-up orbit: keep the viewer in the open, front-facing part of the
-      // room. The near-vertical limit still permits the overhead preset.
+      // Z-up orbit: include the right side of the table so the coffee machine
+      // stays clear of the arms. Keep the camera in front of the back wall.
       orbit: Object.freeze({
         minAzimuthAngle: Math.PI * 25 / 180,
-        maxAzimuthAngle: Math.PI * 105 / 180,
+        maxAzimuthAngle: Math.PI * 150 / 180,
         minPolarAngle: Math.PI / 120,
         maxPolarAngle: Math.PI * 75 / 180,
         minDistance: 1.25,
