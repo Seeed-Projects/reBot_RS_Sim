@@ -111,7 +111,8 @@ try {
     }
     for (const [sceneXml, expectedGeoms, fileBackend] of [
       ['rs_grasp_scene.xml',66,'auto'],['rs_agv_scene.xml',92,'auto'],
-      ['rs_dual_tabletop_scene.xml',231,'auto'],['rs_dual_tabletop_scene.xml',231,'vfs']
+      // Includes the coffee machine's visual anchor, body and top.
+      ['rs_dual_tabletop_scene.xml',234,'auto'],['rs_dual_tabletop_scene.xml',234,'vfs']
     ]) {
       const { model, data, startup } = await loadRsScene(mujoco, null, { sceneXml,fileBackend });
       try {
