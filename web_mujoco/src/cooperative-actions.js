@@ -4,7 +4,8 @@ import {Quaternion,Vector3} from 'three';
 
 export const COOPERATIVE_TASKS=Object.freeze({
   'spoon-in-cup':{label:'勺子入杯',destination:'cup'},
-  'present-and-return':{label:'会合展示后归位',destination:'source'}
+  'present-and-return':{label:'会合展示后归位',destination:'source'},
+  'coffee-feeding':{label:'接咖啡与喂食',destination:'cup',standardLayout:true}
 });
 
 // The same motor action drives approach, lift, alignment, insertion, return

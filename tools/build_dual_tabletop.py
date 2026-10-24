@@ -102,6 +102,11 @@ def build():
         geom(table, f'tray_rail_{y}', 'box', f'.40 {y} .850', '.12 .005 .010', 'ivory')
     for x in [.275, .525]:
         geom(table, f'tray_end_{x}', 'box', f'{x} -.34 .850', '.005 .15 .010', 'ivory')
+    # Coffee machine opens toward -X, leaving the cup and handle accessible.
+    geom(table, 'coffee_machine_visual', 'sphere', '.68 -.30 .84', '.001', 'steel', contype='0', conaffinity='0')
+    geom(table, 'coffee_machine_body', 'box', '.68 -.30 1.04', '.065 .085 .20', 'steel', group='3', rgba='0 0 0 0')
+    geom(table, 'coffee_machine_top', 'box', '.68 -.30 1.235', '.08 .085 .0275', 'steel', group='3', rgba='0 0 0 0')
+    ET.SubElement(table, 'site', name='coffee_spout', pos='.29 -.20 1.265', size='.002', rgba='0 0 0 0')
     geom(table, 'basket_bottom', 'box', '.40 .34 .844', '.12 .145 .004', 'basket')
     # Open lattice basket with collision walls. Visual reeds are added by the renderer.
     for y in [.19, .49]:

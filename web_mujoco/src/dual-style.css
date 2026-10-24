@@ -21,7 +21,7 @@
 .dual-heading p { font-size: 12px; color: #586153; margin: 0; }
 .dual-scene-tags { display: flex; gap: 6px; margin-top: 21px; }
 .dual-scene-tags span { font-size: 10px; padding: 5px 8px; border: 1px solid #8a94734d; border-radius: 5px; background: #f1f1e35e; color: #57634e; }
-.dual-view-switch { position: absolute; right: 30px; top: 104px; display: flex; padding: 3px; background: #faf8efbf; border: 1px solid #ffffff80; border-radius: 9px; }
+.dual-view-switch { position: absolute; right: 30px; top: 104px; display: flex; flex-wrap: wrap; max-width: calc(100% - 60px); padding: 3px; background: #faf8efbf; border: 1px solid #ffffff80; border-radius: 9px; }
 .dual-view-switch button { padding: 7px 14px; font-size: 11px; background: transparent; border: none; }
 .dual-view-switch button[aria-pressed="true"] { background: #3e5438; color: #f2f3e2; }
 .dual-cameras { position: absolute; right: 30px; top: 163px; width: 206px; display: grid; gap: 10px; max-height: calc(100dvh - 210px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #a4ae93 transparent; border-radius: 12px; }
@@ -103,7 +103,9 @@
   .dual-cameras { top: 155px; }
 }
 @media (max-width: 600px) {
-  .dual-cameras { top: 240px; left: 17px; right: 17px; width: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: none; overflow: visible; }
+  .dual-view-switch { left: 17px; max-width: none; }
+  .dual-view-switch button { flex: 1 1 30%; }
+  .dual-cameras { top: 263px; left: 17px; right: 17px; width: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: none; overflow: visible; }
   .dual-cameras .dual-monitor { display: block; width: auto; border-radius: 8px; }
   .dual-cameras .dual-monitor-title { padding: 7px 6px; gap: 3px; font-size: 9px; }
   .dual-cameras .dual-monitor-title span:last-child { display: none; }
@@ -112,5 +114,5 @@
 @media (max-width: 600px) and (max-height: 740px) {
   .dual-heading { display: none; }
   .dual-view-switch { top: 82px; }
-  .dual-cameras { top: 128px; }
+  .dual-cameras { top: 153px; }
 }

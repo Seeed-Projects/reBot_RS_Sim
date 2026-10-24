@@ -3,6 +3,7 @@ import { createPhysicsController } from './pd-control.js';
 import { createTcpIk } from './tcp-ik.js';
 import { createGraspDemo } from './grasp-demo.js';
 import { createCupSpoonCooperation } from './cup-spoon-cooperation.js';
+import { createCoffeeFeedingCooperation } from './coffee-feeding-cooperation.js';
 import { createPosePlanner } from './pose-ik.js';
 import { ARM_JOINTS } from './kinematics.js';
 import { Quaternion, Vector3 } from 'three';
@@ -65,7 +66,9 @@ export function createDualSimulation(mujoco, model, data, {graspMode='assisted'}
     });
     arms[side] = { joints, physics, ik, demo, queue: [] };
   }
-  const cooperation = createCupSpoonCooperation({ mujoco, model, data, arms, graspMode });
+  const cupSpoonCooperation = createCupSpoonCooperation({ mujoco, model, data, arms, graspMode });
+  const coffeeCooperation = createCoffeeFeedingCooperation({ mujoco, model, data, arms });
+  let cooperation = cupSpoonCooperation;
   const initialSolver={cone:model.opt.cone,impratio:model.opt.impratio};
 
   function state() {
@@ -86,7 +89,8 @@ export function createDualSimulation(mujoco, model, data, {graspMode='assisted'}
     activeTasks = new Set();
     error = '';
     mujoco.mj_resetData(model, data);
-    cooperation.reset();
+    cupSpoonCooperation.reset();
+    coffeeCooperation.reset();
     mode = 'sorting';
     for (const arm of Object.values(arms)) {
       arm.demo.reset();
@@ -154,7 +158,9 @@ export function createDualSimulation(mujoco, model, data, {graspMode='assisted'}
   }
 
   reset();
-  return { state, reset, start, step, arms, dispose:cooperation.dispose, setObservationProvider:cooperation.setObservationProvider,
+  return { state, reset, start, step, arms,
+    dispose() { cupSpoonCooperation.dispose(); coffeeCooperation.reset(); },
+    setObservationProvider:cupSpoonCooperation.setObservationProvider,
     setCooperationLayout(seed) {
       validateLayoutSeed(seed);
       if (running) return false;
@@ -165,12 +171,15 @@ export function createDualSimulation(mujoco, model, data, {graspMode='assisted'}
       if (running) return false;
       if(!COOPERATIVE_TASKS[task])throw new RangeError('Unknown cooperative task');
       validateLayoutSeed(seed);
+      const coffee = task === 'coffee-feeding';
+      if (coffee && seed !== null) throw new RangeError('Coffee feeding requires the standard layout');
       if (resetScene) reset({ seed });
+      cooperation = coffee ? coffeeCooperation : cupSpoonCooperation;
       // Settle the free objects onto their supports before planning the grasp.
-      if(graspMode==='contact') {
+      if(graspMode==='contact' && !coffee) {
         model.opt.cone=mujoco.mjtCone.mjCONE_ELLIPTIC.value;model.opt.impratio=10;
       }
-      step(graspMode==='contact'?2500:250);
+      step(graspMode==='contact' && !coffee ? 2500 : 250);
       mode = 'cooperation';
       running = cooperation.start({task});
       error = cooperation.state().error;

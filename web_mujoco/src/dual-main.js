@@ -4,6 +4,7 @@ import { createSceneView } from './scene-view.js';
 import { MODEL_VARIANTS, switchModelVariant } from './model-variants.js';
 import { createDualSimulation, TABLETOP_TASKS } from './dual-simulation.js';
 import { COOP_PHASES } from './cup-spoon-cooperation.js';
+import { COFFEE_PHASES } from './coffee-feeding-cooperation.js';
 import { createSimulationClock } from './simulation-clock.js';
 import { createVisualObserver } from './visual-observer.js';
 import { COOPERATIVE_TASKS } from './cooperative-actions.js';
@@ -32,7 +33,7 @@ document.body.innerHTML = `
       <div class="dual-scene-tags"><span>双 B601-RS</span><span>6 件物品</span><span>双臂协作</span></div>
     </section>
     <div class="dual-view-switch" role="group" aria-label="相机视角">
-      <button id="dual-perspective" aria-pressed="true">桌面</button><button id="dual-close" aria-pressed="false">协作特写</button><button id="dual-room" aria-pressed="false">房间全景</button><button id="dual-overhead" aria-pressed="false">俯视</button>
+      <button id="dual-perspective" aria-pressed="true">桌面</button><button id="dual-close" aria-pressed="false">协作特写</button><button id="dual-room" aria-pressed="false">房间全景</button><button id="dual-coffee" aria-pressed="false">接咖啡</button><button id="dual-feeding" aria-pressed="false">喂食视角</button><button id="dual-overhead" aria-pressed="false">俯视</button>
     </div>
     <aside class="dual-cameras" aria-label="相机实时画面">
     <section class="dual-monitor dual-overhead-monitor" aria-label="桌面相机画面">
@@ -85,26 +86,29 @@ let cooperativeTask='spoon-in-cup';
 let planning = false;
 let nextLayoutSeed = 1;
 let simulationClock = null;
+let previousCoopPhase = '';
 
 function renderTaskMode() {
   const coop = taskMode === 'cooperation';
   $('dual-mode-coop').setAttribute('aria-selected', String(coop));
   $('dual-mode-sort').setAttribute('aria-selected', String(!coop));
   $('dual-task-title').textContent = coop ? `双臂协作 · ${COOPERATIVE_TASKS[cooperativeTask].label}` : '桌面整理';
-  $('dual-grasp-mode').textContent = coop ? 'RGB-D 视觉 · 接触物理夹持' : '接触物理抓取';
+  $('dual-grasp-mode').textContent = coop ? cooperativeTask === 'coffee-feeding' ? '辅助夹持演示' : 'RGB-D 视觉 · 接触物理夹持' : '接触物理抓取';
   $('dual-object-list').classList.toggle('dual-coop-objects', coop);
   $('dual-object-list').innerHTML = coop
     ? `<div class="dual-object"><i class="dual-cup-icon"></i><span>陶瓷杯</span><small>左臂握住杯柄、保持杯口向上</small></div><div class="dual-object"><i class="dual-spoon-icon"></i><span>金属餐勺</span><small>垂直夹取支撑块之间的勺柄中段</small></div>`
     : TABLETOP_TASKS.map((task) => `<button class="dual-object" data-task="${task.id}" aria-pressed="false"><i style="--object-color:${task.color}"></i><span>${task.label}</span><small>${task.destination}</small><b aria-hidden="true">✓</b></button>`).join('');
   $('dual-task-select').innerHTML = coop
-    ? '<option value="spoon-in-cup">左臂拿稳杯子，右臂把勺子放进杯中</option><option value="present-and-return">双臂取杯取勺，会合展示后分别归位</option>'
+    ? '<option value="spoon-in-cup">左臂拿稳杯子，右臂把勺子放进杯中</option><option value="present-and-return">双臂取杯取勺，会合展示后分别归位</option><option value="coffee-feeding">接咖啡、搅拌与送勺喂食（演示）</option>'
     : `<option value="all">把桌面物品整理到托盘和收纳篮</option>${TABLETOP_TASKS.map((task) => `<option value="${task.id}">把${task.label}放入${task.destination}</option>`).join('')}`;
   $('dual-task-select').value = coop ? cooperativeTask : selected;
-  $('dual-coop-phases').innerHTML=cooperativeTask==='present-and-return'
+  $('dual-coop-phases').innerHTML=cooperativeTask==='coffee-feeding'
+    ? '<li>取杯接咖啡</li><li>入杯搅拌</li><li>送勺喂食</li><li>放回桌面</li>'
+    : cooperativeTask==='present-and-return'
     ? '<li>取杯取勺</li><li>抬起会合</li><li>两件归位</li><li>退开复核</li>'
     : '<li>取杯取勺</li><li>抬起会合</li><li>勺子入杯</li><li>放回桌面</li>';
   $('dual-coop-phases').hidden = !coop;
-  $('dual-layout-controls').hidden = !coop;
+  $('dual-layout-controls').hidden = !coop || COOPERATIVE_TASKS[cooperativeTask].standardLayout === true;
   $('dual-start').innerHTML = `${coop ? '开始协作' : '开始整理'} <span>↗</span>`;
   $('dual-left-role').textContent = coop ? '左臂 · 持杯' : '左臂 → 托盘';
   $('dual-right-role').textContent = coop ? '右臂 · 送勺' : '右臂 → 收纳篮';
@@ -127,11 +131,16 @@ function renderState() {
   const state = simulation.state();
   const coop = taskMode === 'cooperation';
   const collaboration = state.cooperation;
+  const coffee = cooperativeTask === 'coffee-feeding';
+  const phases = coffee ? COFFEE_PHASES : COOP_PHASES;
+  if (coop && coffee && state.running && collaboration.phase === 'feed-approach' && previousCoopPhase !== 'feed-approach') selectView('dual-feeding');
+  previousCoopPhase = collaboration.phase;
   const count = state.completed.length;
   $('dual-count').textContent = state.error ? (coop ? '协作未完成' : '整理未完成') : coop ? collaboration.complete ? '协作完成 ✓' : state.running ? state.paused ? '已暂停' : '双臂同步中' : '准备就绪' : `${count} / 4 完成`;
   const seconds = Math.floor(state.time);
   $('dual-timer').textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const roles = { approach: ['靠近杯柄', '靠近勺柄'], grasp: ['握住杯柄', '夹住勺柄'], lift: ['杯口向上', '抬起餐勺'], align: ['移杯到中央', '转正餐勺'], insert: ['持续持稳', '缓慢插入'], 'return-above':['回到原位上方','回到支撑块上方'], 'return-objects':['归还杯子','归还餐勺'], 'release-spoon': ['持续持稳', '松开餐勺'], 'clear-right': ['持续持稳', '抬臂避让'], 'lower-cup': ['放回杯子', '等待左臂'], 'release-cup': ['松开杯柄', '等待左臂'], retreat: ['抬臂退出', '抬臂退出'], complete: ['已完成', '已完成'] };
+  Object.assign(roles, { 'coffee-approach': ['空杯对准出液口', '抬勺等待'], dispense: ['接咖啡', '抬勺等待'], 'coffee-clear': ['移杯离开咖啡机', '抬勺等待'], 'raise-spoon': ['持稳杯子', '抬勺避开杯沿'], stir: ['持续持稳', '搅拌两圈'], withdraw: ['持续持稳', '抬勺离杯'], 'feed-approach': ['持续持稳', '靠近嘴边'], feed: ['持续持稳', '缓慢送勺'], taste: ['持续持稳', '嘴边停留'], 'feed-retreat': ['持续持稳', '收回餐勺'], 'return-spoon': ['持续持稳', '移回杯口'], reinsert: ['持续持稳', '放回杯中'] });
   for (const [index, side] of ['left', 'right'].entries()) $('dual-' + side + '-state').textContent = state.paused ? '已暂停' : coop ? roles[collaboration.phase]?.[index] || '待命' : stages[state.arms[side].stage] || '待命';
   $('dual-mode-coop').disabled = $('dual-mode-sort').disabled = state.running || planning;
   $('dual-reset').disabled = planning;
@@ -152,8 +161,8 @@ function renderState() {
   let progress = count;
   for (const arm of Object.values(state.arms)) if (arm.running && !state.completed.includes(arm.selectedId)) progress += arm.progress;
   $('dual-progress-fill').style.width = `${(coop ? collaboration.progress : progress / 4) * 100}%`;
-  const phaseIndex = collaboration.phase.startsWith('return-')?4:COOP_PHASES.findIndex((phase) => phase[0] === collaboration.phase);
-  const currentStep = phaseIndex < 2 ? 0 : phaseIndex < 4 ? 1 : phaseIndex < 7 ? 2 : 3;
+  const phaseIndex = !coffee && collaboration.phase.startsWith('return-') ? 4 : phases.findIndex((phase) => phase[0] === collaboration.phase);
+  const currentStep = coffee ? phaseIndex < 8 ? 0 : phaseIndex < 11 ? 1 : phaseIndex < 15 ? 2 : 3 : phaseIndex < 2 ? 0 : phaseIndex < 4 ? 1 : phaseIndex < 7 ? 2 : 3;
   $('dual-coop-phases').querySelectorAll('li').forEach((node, index) => {
     node.classList.toggle('is-current', state.running && index === currentStep);
     node.classList.toggle('is-done', collaboration.complete || state.running && index < currentStep);
@@ -163,13 +172,16 @@ function renderState() {
   else if (state.error) {
     const failure = collaboration.failure;
     const reasons = { 'planning-failed': '目标姿态超出可达范围', 'cup-not-upright': '杯子倾斜，请重新摆放', 'object-moved-before-grasp': '物品在抓取前移位', 'cup-grasp-out-of-reach': '左臂未到达杯柄', 'spoon-grasp-out-of-reach': '右臂未到达勺柄', 'cup-not-held-upright': '杯子未保持直立', 'spoon-missed-cup-opening': '勺头未对准杯口', 'placement-not-stable': '放置后物品未稳定' };
-    const phase = COOP_PHASES.find(entry => entry[0] === failure?.phase)?.[1] || '规划';
+    const phase = phases.find(entry => entry[0] === failure?.phase)?.[1] || '规划';
+    Object.assign(reasons, {'cup-not-under-coffee-spout': '杯口未对准咖啡机出液口', 'stir-left-cup': '搅拌时勺头离开杯口', 'spoon-missed-mouth': '餐勺未到达嘴边'});
     Object.assign(reasons,{'vision-occluded':'相机未能确认杯子或勺子的位置','vision-stale':'相机观测已过期','vision-error':'相机处理失败','vision-alignment-out-of-range':'杯口与勺头的偏差超出纠正范围','trajectory-collision':'规划路径存在碰撞','unexpected-collision':'执行时检测到意外碰撞','contact-slip-detected':'夹持面检测到物品滑动','contact-grasp-lost':'夹爪已失去可靠接触'});
     const reason = reasons[state.error] || (state.error.startsWith('motion-timeout:') ? '动作未在规定时间内完成' : '未满足抓取条件');
-    $('dual-status').textContent = coop ? `${phase}：${reason}。可重试当前摆放或换一组。` : '本次抓取未完成，请复位后重试。';
+    $('dual-status').textContent = coop ? `${phase}：${reason}。${coffee ? '请复位后重试。' : '可重试当前摆放或换一组。'}` : '本次抓取未完成，请复位后重试。';
   }
   else if (state.paused) $('dual-status').textContent = '演示已暂停，点击继续或按空格键恢复。';
   else if (coop && state.running) $('dual-status').textContent = collaboration.label;
+  else if (coop && coffee && collaboration.complete) $('dual-status').textContent = '接咖啡、搅拌和送勺完成，杯内保留咖啡，餐勺已放回。';
+  else if (coop && coffee) $('dual-status').textContent = '左臂接咖啡并持稳杯子，右臂搅拌后送勺到嘴边。点击开始协作。';
   else if (coop && collaboration.complete) $('dual-status').textContent = cooperativeTask==='present-and-return'?'视觉复核通过：杯子和餐勺已分别归位，双臂均已松开。':'视觉复核通过：餐勺已入杯，杯子已放稳，双臂均已松开。';
   else if (coop) $('dual-status').textContent = cooperativeTask==='present-and-return'?'双臂取杯取勺，会合展示后送回各自的原位。点击开始协作。':'左臂拿稳杯子，右臂把勺子放进杯中。点击开始协作。';
   else if (state.running) $('dual-status').textContent = '整理进行中 · 左臂收纳到托盘，右臂收纳到篮子。';
@@ -196,7 +208,7 @@ $('dual-start').addEventListener('click', () => {
   if (taskMode === 'cooperation') {
     planning = true; renderState();
     setTimeout(() => {
-      try { simulation.startCooperation({task:cooperativeTask}); selectView('dual-close'); }
+      try { simulation.startCooperation({task:cooperativeTask}); selectView(cooperativeTask === 'coffee-feeding' ? 'dual-coffee' : 'dual-close'); }
       finally { planning = false; simulationClock?.reset(); renderState(); }
     }, 50);
   } else { simulation.start(selected === 'all' ? undefined : [selected]); renderState(); }
@@ -224,6 +236,8 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'KeyR') reset();
 });
 const views = {
+  'dual-coffee': [[1.15, -1.15, 1.70], [.40, -.20, 1.04]],
+  'dual-feeding': [[1.25, -.25, 1.65], [.25, .42, 1.00]],
   'dual-perspective': [MODEL_VARIANTS.dual.view.position, [.24, 0, .83]],
   'dual-close': [[1.05, -.95, 1.48], [.29, .01, .94]],
   'dual-room': [[3.0, -3.2, 2.7], [.28, .28, .98]],
@@ -264,6 +278,7 @@ async function main() {
       const steps = simulationClock.steps(now, { speed: Number($('dual-speed').value), paused: planning || simulation.state().paused || simulation.state().cooperation.vision.waiting });
       if (steps) simulation.step(steps);
       view.sync(data);
+      view.setCoffeeState(simulation.state().cooperation);
       view.render();
       startup.firstFrameMs??=performance.now()-bootBegan;
       if (now - lastUi > 100) { renderState(); lastUi = now; }

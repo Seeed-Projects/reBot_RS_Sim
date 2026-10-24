@@ -41,10 +41,12 @@ try {
     ['dual-room',[3,-3.2,2.7],[.28,.28,.98]],
     ['dual-overhead',[.3,-.001,2.9],[.24,0,.83]],
     ['dual-close',[1.05,-.95,1.48],[.29,.01,.94]],
+    ['dual-coffee',[1.15,-1.15,1.70],[.40,-.20,1.04]],
+    ['dual-feeding',[1.25,-.25,1.65],[.25,.42,1.00]],
     ['dual-perspective',MODEL_VARIANTS.dual.view.position,MODEL_VARIANTS.dual.view.target]
   ]) {
     await page.locator(`#${id}`).click();const camera=await cameraState();checkBounds(camera);
-    camera.position.forEach((value,i)=>assert(Math.abs(value-position[i])<1e-6));
+    camera.position.forEach((value,i)=>assert(Math.abs(value-position[i])<1e-6,JSON.stringify({id,camera,position})));
     camera.target.forEach((value,i)=>assert(Math.abs(value-target[i])<1e-6));
     if(id==='dual-room')await page.screenshot({path:'.reports/visual-ui-room.png'});
   }
@@ -82,7 +84,7 @@ try {
   await touch('touchStart',[[60,470],[140,470]]);await touch('touchMove',[[10,470],[610,470]]);await touch('touchEnd',[]);
   checkBounds(await cameraState());assert((await cameraState()).distance<anchored.distance);await cdp.detach();
   await page.locator('#dual-perspective').click();checks.cameraBounds=true;
-  console.log('UI: bounded mouse/touch orbit, fixed target, zoom limits and four view presets passed');
+  console.log('UI: bounded mouse/touch orbit, fixed target, zoom limits and six view presets passed');
   await page.getByRole('button',{name:'收起任务卡片',exact:true}).click({force:true});
   assert.equal(await page.locator('#dual-task-details').isVisible(),false);
   await page.getByRole('button',{name:'展开任务卡片',exact:true}).click({force:true});
@@ -108,8 +110,9 @@ try {
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:'.reports/visual-ui-desktop.png'});
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(600);
-  const mobile=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,canvases:['overhead-camera-canvas','left-wrist-camera-canvas','right-wrist-camera-canvas'].map(id=>{const r=document.getElementById(id).getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})}));
+  const mobile=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,viewButtons:[...document.querySelectorAll('.dual-view-switch button')].map(button=>{const r=button.getBoundingClientRect();return {id:button.id,accessible:button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};}),canvases:['overhead-camera-canvas','left-wrist-camera-canvas','right-wrist-camera-canvas'].map(id=>{const r=document.getElementById(id).getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})}));
   assert(mobile.scroll<=mobile.width);assert(mobile.canvases.every(c=>c.width>0&&c.x>=0&&c.x+c.width<=mobile.width+1));checks.mobile=mobile;
+  assert.equal(mobile.viewButtons.length,6);assert(mobile.viewButtons.every(button=>button.accessible),'All six mobile view buttons must remain reachable above the camera monitors');
   await page.screenshot({path:'.reports/visual-ui-mobile.png'});
   await page.locator('#dual-reset').click();
   assert.equal(await page.evaluate(()=>window.rebotDual.state().cooperation.complete),false);checks.reset=true;
@@ -123,8 +126,23 @@ try {
   assert(checks.returned.history.some(entry=>entry.phase==='return-objects'));
   assert(checks.returned.vision.history.some(entry=>entry.stage==='settled-verification'));
   await page.locator('#dual-reset').click();
+  await page.locator('#dual-task-select').selectOption('coffee-feeding');
+  assert.equal(await page.locator('#dual-grasp-mode').textContent(),'辅助夹持演示');
+  assert.equal(await page.locator('#dual-layout-controls').isVisible(),false);
+  await page.locator('#dual-speed').selectOption('4');
+  await page.locator('#dual-start').click({force:true});
+  await page.waitForFunction(()=>{const state=window.rebotDual.state();return state.cooperation.complete||Boolean(state.error);},null,{timeout:240000});
+  checks.coffee=await page.evaluate(()=>window.rebotDual.state().cooperation);
+  assert.equal(checks.coffee.error,'',JSON.stringify(checks.coffee.failure));assert.equal(checks.coffee.complete,true);
+  assert.equal(checks.coffee.task,'coffee-feeding');assert.equal(checks.coffee.graspMode,'assisted-weld');
+  assert.equal(checks.coffee.coffeeFill,1);assert.equal(checks.coffee.fed,true);
+  assert(checks.coffee.stirringTravel>.03);assert(checks.coffee.minimumMouthDistance<.015);
+  await page.screenshot({path:'.reports/visual-ui-coffee.png'});
+  await page.locator('#dual-reset').click();
+  assert.equal(await page.evaluate(()=>window.rebotDual.state().cooperation.coffeeFill || 0),0);
+  await page.locator('#dual-task-select').selectOption('spoon-in-cup');
   await page.locator('#dual-mode-sort').click();assert.equal(await page.locator('#dual-grasp-mode').textContent(),'接触物理抓取');
   await page.locator('#dual-mode-coop').click();assert.match(await page.locator('#dual-grasp-mode').textContent(),/RGB-D/);checks.modeSwitch=true;
   assert.deepEqual(errors,[]);checks.errors=errors;
-  console.log('Actual UI: two pure-contact Worker RGB-D tasks, three independent cameras, pause, fold, mobile, reset and mode switching passed');
+  console.log('Actual UI: two pure-contact Worker RGB-D tasks, assisted coffee/feeding task, three independent cameras, pause, fold, mobile, reset and mode switching passed');
 } finally {await writeFile(`.reports/${externalUrl?'visual-ui-production':'visual-ui'}.json`,JSON.stringify({url:externalUrl||'development',checks,errors},null,2));await browser.close();await server?.close();}

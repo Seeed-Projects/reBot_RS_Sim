@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createLabProp, disposeLabProp } from './lab-props-view.js';
 import { createHomeProp, createHomeEnvironmentTexture, createWoodTexture } from './home-props-view.js';
+import { createCoffeeVisuals } from './coffee-view.js';
 import { createCampusGroundGeometry } from './campus-ground.js';
 import { resolveExplosionLayout } from './explosion-layout.js';
 import {
@@ -393,6 +394,7 @@ export function createSceneView(host, options = {}) {
   const scene = new THREE.Scene();
   const campus = options.environment === 'campus';
   const home = options.environment === 'home';
+  const coffeeVisuals = home ? createCoffeeVisuals(scene) : null;
   const homeWood = home ? createWoodTexture() : null;
   const homeFloor = home ? createWoodTexture(true) : null;
   let campusEnvironment = null;
@@ -448,6 +450,7 @@ export function createSceneView(host, options = {}) {
   const CAMERA_PREVIEW_INTERVAL_MS = 100; // Per camera, rather than per group.
   let homeFrameDirty=true,lastHomePose=null,homePose=null,previewCursor=0,previewInFlight=null;
   let viewDisposed=false;
+  let coffeeVisualState = '';
   cameraPreviews.forEach((preview) => {
     if (!preview.canvas) return;
     preview.canvas.width = 320; preview.canvas.height = 240;
@@ -1755,6 +1758,13 @@ export function createSceneView(host, options = {}) {
   resize();
 
   return {
+    setCoffeeState(state) {
+      if (!coffeeVisuals) return;
+      coffeeVisuals.update(state);
+      const next = `${state?.coffeeFill || 0}/${Boolean(state?.spoonLoaded)}/${Boolean(state?.dispensing)}/${state?.dispensing || state?.phase === 'stir' ? state.time : 0}`;
+      if (next !== coffeeVisualState) homeFrameDirty = true;
+      coffeeVisualState = next;
+    },
     build,
     async loadEnvironment() {
       if (!campus || campusEnvironment) return;
@@ -1862,6 +1872,7 @@ export function createSceneView(host, options = {}) {
     camera,
     dispose() {
       viewDisposed=true;
+      coffeeVisuals?.dispose();
       campusEnvironment?.dispose();
       observer.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPickPointerDown);

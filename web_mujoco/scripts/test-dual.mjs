@@ -62,6 +62,18 @@ for (let step = 0; step < 12000 && simulation.state().running; step++) {
   if (stages !== last) { console.log(data.time.toFixed(2), stages); last = stages; }
 }
 const final = simulation.state();
+if (final.error) {
+  const contacts = data.contact;
+  try {
+    for (let i = 0; i < Math.min(data.ncon, contacts.size()); i++) {
+      const c = contacts.get(i);
+      try {
+        const names = [c.geom1, c.geom2].map(geom => mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM.value, geom) || mujoco.mj_id2name(model, bodyType, model.geom_bodyid[geom]));
+        if (names.some(name => name?.startsWith('coffee_'))) console.log('Machine contact', names, c.dist);
+      } finally { c.delete(); }
+    }
+  } finally { contacts.delete(); }
+}
 console.log(JSON.stringify(final));
 assert.equal(final.error, '', `Physical grasp failed: ${final.error}`);
 assert.equal(final.running, false, 'Task timed out');
